@@ -3,8 +3,534 @@
 #endif
 #include "flu_va_drivers_vdpau.h"
 
+// clang-format off
+#define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              0
+#define FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS           0
+#define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES            0
+#define FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS         0
+#define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        0
+#define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
+// clang-format on
+
+static VAStatus
+flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryConfigProfiles (
+    VADriverContextP ctx, VAProfile *profile_list, int *num_profiles)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryConfigEntrypoints (VADriverContextP ctx,
+    VAProfile profile, VAEntrypoint *entrypoint_list, int *num_entrypoints)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_GetConfigAttributes (VADriverContextP ctx,
+    VAProfile profile, VAEntrypoint entrypoint, VAConfigAttrib *attrib_list,
+    int num_attribs)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
+    VAEntrypoint entrypoint, VAConfigAttrib *attrib_list, int num_attribs,
+    VAConfigID *config_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroyConfig (VADriverContextP ctx, VAConfigID config_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryConfigAttributes (VADriverContextP ctx,
+    VAConfigID config_id, VAProfile *profile, VAEntrypoint *entrypoint,
+    VAConfigAttrib *attrib_list, int *num_attribs)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateSurfaces (VADriverContextP ctx, int width,
+    int height, int format, int num_surfaces, VASurfaceID *surfaces)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroySurfaces (
+    VADriverContextP ctx, VASurfaceID *surface_list, int num_surfaces)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
+    int picture_width, int picture_height, int flag,
+    VASurfaceID *render_targets, int num_render_targets, VAContextID *context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroyContext (VADriverContextP ctx, VAContextID context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateBuffer (VADriverContextP ctx, VAContextID context,
+    VABufferType type, unsigned int size, unsigned int num_elements,
+    void *data, VABufferID *buf_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_BufferSetNumElements (
+    VADriverContextP ctx, VABufferID buf_id, unsigned int num_elements)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_MapBuffer (
+    VADriverContextP ctx, VABufferID buf_id, void **pbuf)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_UnmapBuffer (VADriverContextP ctx, VABufferID buf_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroyBuffer (VADriverContextP ctx, VABufferID buffer_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_BeginPicture (
+    VADriverContextP ctx, VAContextID context, VASurfaceID render_target)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_RenderPicture (VADriverContextP ctx, VAContextID context,
+    VABufferID *buffers, int num_buffers)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_EndPicture (VADriverContextP ctx, VAContextID context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SyncSurface (
+    VADriverContextP ctx, VASurfaceID render_target)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QuerySurfaceStatus (
+    VADriverContextP ctx, VASurfaceID render_target, VASurfaceStatus *status)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QuerySurfaceError (VADriverContextP ctx,
+    VASurfaceID render_target, VAStatus error_status, void **error_info)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
+    void *draw, short srcx, short srcy, unsigned short srcw,
+    unsigned short srch, short destx, short desty, unsigned short destw,
+    unsigned short desth, VARectangle *cliprects,
+    unsigned int number_cliprects, unsigned int flags)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryImageFormats (
+    VADriverContextP ctx, VAImageFormat *format_list, int *num_formats)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateImage (VADriverContextP ctx, VAImageFormat *format,
+    int width, int height, VAImage *image)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DeriveImage (
+    VADriverContextP ctx, VASurfaceID surface, VAImage *image)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroyImage (VADriverContextP ctx, VAImageID image)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SetImagePalette (VADriverContextP ctx, VAImageID image,
+
+    unsigned char *palette)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_GetImage (VADriverContextP ctx, VASurfaceID surface,
+    int x, int y, unsigned int width, unsigned int height, VAImageID image)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_PutImage (VADriverContextP ctx, VASurfaceID surface,
+    VAImageID image, int src_x, int src_y, unsigned int src_width,
+    unsigned int src_height, int dest_x, int dest_y, unsigned int dest_width,
+    unsigned int dest_height)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QuerySubpictureFormats (VADriverContextP ctx,
+    VAImageFormat *format_list, unsigned int *flags, unsigned int *num_formats)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateSubpicture (
+    VADriverContextP ctx, VAImageID image, VASubpictureID *subpicture)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DestroySubpicture (
+    VADriverContextP ctx, VASubpictureID subpicture)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SetSubpictureImage (
+    VADriverContextP ctx, VASubpictureID subpicture, VAImageID image)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SetSubpictureChromakey (VADriverContextP ctx,
+    VASubpictureID subpicture, unsigned int chromakey_min,
+    unsigned int chromakey_max, unsigned int chromakey_mask)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SetSubpictureGlobalAlpha (
+    VADriverContextP ctx, VASubpictureID subpicture, float global_alpha)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_AssociateSubpicture (VADriverContextP ctx,
+    VASubpictureID subpicture, VASurfaceID *target_surfaces, int num_surfaces,
+    short src_x, short src_y, unsigned short src_width,
+    unsigned short src_height, short dest_x, short dest_y,
+    unsigned short dest_width, unsigned short dest_height, unsigned int flags)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_DeassociateSubpicture (VADriverContextP ctx,
+    VASubpictureID subpicture, VASurfaceID *target_surfaces, int num_surfaces)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryDisplayAttributes (
+    VADriverContextP ctx, VADisplayAttribute *attr_list, int *num_attributes)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_GetDisplayAttributes (
+    VADriverContextP ctx, VADisplayAttribute *attr_list, int num_attributes)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SetDisplayAttributes (
+    VADriverContextP ctx, VADisplayAttribute *attr_list, int num_attributes)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_BufferInfo (VADriverContextP ctx, VABufferID buf_id,
+    VABufferType *type, unsigned int *size, unsigned int *num_elements)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_LockSurface (VADriverContextP ctx, VASurfaceID surface,
+    unsigned int *fourcc, unsigned int *luma_stride,
+    unsigned int *chroma_u_stride, unsigned int *chroma_v_stride,
+    unsigned int *luma_offset, unsigned int *chroma_u_offset,
+    unsigned int *chroma_v_offset, unsigned int *buffer_name, void **buffer)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_UnlockSurface (VADriverContextP ctx, VASurfaceID surface)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_GetSurfaceAttributes (VADriverContextP dpy,
+    VAConfigID config, VASurfaceAttrib *attrib_list, unsigned int num_attribs)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
+    unsigned int format, unsigned int width, unsigned int height,
+    VASurfaceID *surfaces, unsigned int num_surfaces,
+    VASurfaceAttrib *attrib_list, unsigned int num_attribs)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QuerySurfaceAttributes (VADriverContextP dpy,
+    VAConfigID config, VASurfaceAttrib *attrib_list, unsigned int *num_attribs)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_AcquireBufferHandle (
+    VADriverContextP ctx, VABufferID buf_id, VABufferInfo *buf_info)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_ReleaseBufferHandle (
+    VADriverContextP ctx, VABufferID buf_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_CreateMFContext (
+    VADriverContextP ctx, VAMFContextID *mfe_context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_MFAddContext (
+    VADriverContextP ctx, VAMFContextID mf_context, VAContextID context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_MFReleaseContext (
+    VADriverContextP ctx, VAMFContextID mf_context, VAContextID context)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_MFSubmit (VADriverContextP ctx, VAMFContextID mf_context,
+    VAContextID *contexts, int num_contexts)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+static VAStatus
+flu_va_drivers_vdpau_CreateBuffer2 (VADriverContextP ctx, VAContextID context,
+    VABufferType type, unsigned int width, unsigned int height,
+    unsigned int *unit_size, unsigned int *pitch, VABufferID *buf_id)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_QueryProcessingRate (VADriverContextP ctx,
+    VAConfigID config_id, VAProcessingRateParameter *proc_buf,
+    unsigned int *processing_rate)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_ExportSurfaceHandle (VADriverContextP ctx,
+    VASurfaceID surface_id, uint32_t mem_type, uint32_t flags,
+    void *descriptor)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+static VAStatus
+flu_va_drivers_vdpau_SyncSurface2 (
+    VADriverContextP ctx, VASurfaceID surface, uint64_t timeout_ns)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_SyncBuffer (
+    VADriverContextP ctx, VABufferID buf_id, uint64_t timeout_ns)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_Copy (VADriverContextP ctx, VACopyObject *dst,
+    VACopyObject *src, VACopyOption option)
+{
+  return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
+
 VAStatus
 FLU_VA_DRIVERS_DRIVER_INIT (VADriverContextP ctx)
 {
+  ctx->version_major = VA_MAJOR_VERSION;
+  ctx->version_minor = VA_MINOR_VERSION;
+  ctx->max_profiles = FLU_VA_DRIVERS_VDPAU_MAX_PROFILES;
+  ctx->max_entrypoints = FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS;
+  ctx->max_attributes = FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES;
+  ctx->max_image_formats = FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS;
+  ctx->max_subpic_formats = FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS;
+  ctx->max_display_attributes = FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES;
+  ctx->str_vendor = "Fluendo S.A.";
+
+  memset (ctx->vtable, 0, sizeof (*ctx->vtable));
+
+  ctx->vtable->vaTerminate = flu_va_drivers_vdpau_Terminate;
+  ctx->vtable->vaQueryConfigProfiles =
+      flu_va_drivers_vdpau_QueryConfigProfiles;
+  ctx->vtable->vaQueryConfigEntrypoints =
+      flu_va_drivers_vdpau_QueryConfigEntrypoints;
+  ctx->vtable->vaGetConfigAttributes =
+      flu_va_drivers_vdpau_GetConfigAttributes;
+  ctx->vtable->vaCreateConfig = flu_va_drivers_vdpau_CreateConfig;
+  ctx->vtable->vaDestroyConfig = flu_va_drivers_vdpau_DestroyConfig;
+  ctx->vtable->vaQueryConfigAttributes =
+      flu_va_drivers_vdpau_QueryConfigAttributes;
+  ctx->vtable->vaCreateSurfaces = flu_va_drivers_vdpau_CreateSurfaces;
+  ctx->vtable->vaDestroySurfaces = flu_va_drivers_vdpau_DestroySurfaces;
+  ctx->vtable->vaCreateContext = flu_va_drivers_vdpau_CreateContext;
+  ctx->vtable->vaDestroyContext = flu_va_drivers_vdpau_DestroyContext;
+  ctx->vtable->vaCreateBuffer = flu_va_drivers_vdpau_CreateBuffer;
+  ctx->vtable->vaBufferSetNumElements =
+      flu_va_drivers_vdpau_BufferSetNumElements;
+  ctx->vtable->vaMapBuffer = flu_va_drivers_vdpau_MapBuffer;
+  ctx->vtable->vaUnmapBuffer = flu_va_drivers_vdpau_UnmapBuffer;
+  ctx->vtable->vaDestroyBuffer = flu_va_drivers_vdpau_DestroyBuffer;
+  ctx->vtable->vaBeginPicture = flu_va_drivers_vdpau_BeginPicture;
+  ctx->vtable->vaRenderPicture = flu_va_drivers_vdpau_RenderPicture;
+  ctx->vtable->vaEndPicture = flu_va_drivers_vdpau_EndPicture;
+  ctx->vtable->vaSyncSurface = flu_va_drivers_vdpau_SyncSurface;
+  ctx->vtable->vaQuerySurfaceStatus = flu_va_drivers_vdpau_QuerySurfaceStatus;
+  ctx->vtable->vaQuerySurfaceError = flu_va_drivers_vdpau_QuerySurfaceError;
+  ctx->vtable->vaPutSurface = flu_va_drivers_vdpau_PutSurface;
+  ctx->vtable->vaQueryImageFormats = flu_va_drivers_vdpau_QueryImageFormats;
+  ctx->vtable->vaCreateImage = flu_va_drivers_vdpau_CreateImage;
+  ctx->vtable->vaDeriveImage = flu_va_drivers_vdpau_DeriveImage;
+  ctx->vtable->vaDestroyImage = flu_va_drivers_vdpau_DestroyImage;
+  ctx->vtable->vaSetImagePalette = flu_va_drivers_vdpau_SetImagePalette;
+  ctx->vtable->vaGetImage = flu_va_drivers_vdpau_GetImage;
+  ctx->vtable->vaPutImage = flu_va_drivers_vdpau_PutImage;
+  ctx->vtable->vaQuerySubpictureFormats =
+      flu_va_drivers_vdpau_QuerySubpictureFormats;
+  ctx->vtable->vaCreateSubpicture = flu_va_drivers_vdpau_CreateSubpicture;
+  ctx->vtable->vaDestroySubpicture = flu_va_drivers_vdpau_DestroySubpicture;
+  ctx->vtable->vaSetSubpictureImage = flu_va_drivers_vdpau_SetSubpictureImage;
+  ctx->vtable->vaSetSubpictureChromakey =
+      flu_va_drivers_vdpau_SetSubpictureChromakey;
+  ctx->vtable->vaSetSubpictureGlobalAlpha =
+      flu_va_drivers_vdpau_SetSubpictureGlobalAlpha;
+  ctx->vtable->vaAssociateSubpicture =
+      flu_va_drivers_vdpau_AssociateSubpicture;
+  ctx->vtable->vaDeassociateSubpicture =
+      flu_va_drivers_vdpau_DeassociateSubpicture;
+  ctx->vtable->vaQueryDisplayAttributes =
+      flu_va_drivers_vdpau_QueryDisplayAttributes;
+  ctx->vtable->vaGetDisplayAttributes =
+      flu_va_drivers_vdpau_GetDisplayAttributes;
+  ctx->vtable->vaSetDisplayAttributes =
+      flu_va_drivers_vdpau_SetDisplayAttributes;
+  ctx->vtable->vaBufferInfo = flu_va_drivers_vdpau_BufferInfo;
+  ctx->vtable->vaLockSurface = flu_va_drivers_vdpau_LockSurface;
+  ctx->vtable->vaUnlockSurface = flu_va_drivers_vdpau_UnlockSurface;
+  ctx->vtable->vaGetSurfaceAttributes =
+      flu_va_drivers_vdpau_GetSurfaceAttributes;
+  ctx->vtable->vaCreateSurfaces2 = flu_va_drivers_vdpau_CreateSurfaces2;
+  ctx->vtable->vaQuerySurfaceAttributes =
+      flu_va_drivers_vdpau_QuerySurfaceAttributes;
+  ctx->vtable->vaAcquireBufferHandle =
+      flu_va_drivers_vdpau_AcquireBufferHandle;
+  ctx->vtable->vaReleaseBufferHandle =
+      flu_va_drivers_vdpau_ReleaseBufferHandle;
+  ctx->vtable->vaCreateMFContext = flu_va_drivers_vdpau_CreateMFContext;
+  ctx->vtable->vaMFAddContext = flu_va_drivers_vdpau_MFAddContext;
+  ctx->vtable->vaMFReleaseContext = flu_va_drivers_vdpau_MFReleaseContext;
+  ctx->vtable->vaMFSubmit = flu_va_drivers_vdpau_MFSubmit;
+  ctx->vtable->vaCreateBuffer2 = flu_va_drivers_vdpau_CreateBuffer2;
+  ctx->vtable->vaQueryProcessingRate =
+      flu_va_drivers_vdpau_QueryProcessingRate;
+  ctx->vtable->vaExportSurfaceHandle =
+      flu_va_drivers_vdpau_ExportSurfaceHandle;
+  ctx->vtable->vaSyncSurface2 = flu_va_drivers_vdpau_SyncSurface2;
+  ctx->vtable->vaSyncBuffer = flu_va_drivers_vdpau_SyncBuffer;
+  ctx->vtable->vaCopy = flu_va_drivers_vdpau_Copy;
+
   return VA_STATUS_ERROR_UNKNOWN;
 }

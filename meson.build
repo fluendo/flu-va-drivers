@@ -18,4 +18,8 @@ if libva_driver_dir == ''
   libva_driver_dir = libva_dep.get_pkgconfig_variable('driverdir')
 endif
 
+libva_version_array = libva_dep.version().split('.')
+libva_major_version = libva_version_array[0]
+libva_minor_version = libva_version_array[1]
+
 subdir('src')

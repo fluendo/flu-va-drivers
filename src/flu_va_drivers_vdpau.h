@@ -3,5 +3,6 @@
 
 #include <va/va.h>
 #include <va/va_backend.h>
+#include <string.h>
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */

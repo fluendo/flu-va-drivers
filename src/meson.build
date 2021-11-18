@@ -10,6 +10,8 @@ config = configuration_data()
 init_func_name = '__vaDriverInit_@0@_@1@'.format(libva_major_version,
                                                  libva_minor_version)
 config.set('FLU_VA_DRIVERS_DRIVER_INIT', init_func_name)
+config.set('VA_MAJOR_VERSION', libva_major_version)
+config.set('VA_MINOR_VERSION', libva_minor_version)
 config_file = configure_file(output: 'config.h', configuration: config)
 
 flu_va_drivers_vdpau_drv_video = shared_module(
