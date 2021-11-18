@@ -2,7 +2,7 @@ project(
   'flu-va-drivers',
   'c',
   version : '0.0.0',
-  meson_version : '>= 0.43.0'
+  meson_version : '>= 0.46.0'
 )
 
 python = import('python').find_installation()
