@@ -1,0 +1,2 @@
+option('driverdir', type : 'string', description : 'libva drivers path')
+
