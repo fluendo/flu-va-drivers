@@ -2,6 +2,7 @@
 #include "config.h"
 #endif
 #include "flu_va_drivers_vdpau.h"
+#include "flu_va_drivers_utils.h"
 
 // clang-format off
 #define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              0
@@ -15,7 +16,9 @@
 static VAStatus
 flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  free (ctx->pDriverData);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -438,9 +441,21 @@ flu_va_drivers_vdpau_Copy (VADriverContextP ctx, VACopyObject *dst,
   return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
+static void
+flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
+{
+  flu_va_drivers_get_vendor (driver_data->va_vendor);
+}
+
 VAStatus
 FLU_VA_DRIVERS_DRIVER_INIT (VADriverContextP ctx)
 {
+  FluVaDriversVdpauDriverData *driver_data;
+
+  driver_data = calloc (1, sizeof (FluVaDriversVdpauDriverData));
+  ctx->pDriverData = driver_data;
+  flu_va_drivers_vdpau_data_init (driver_data);
+
   ctx->version_major = VA_MAJOR_VERSION;
   ctx->version_minor = VA_MINOR_VERSION;
   ctx->max_profiles = FLU_VA_DRIVERS_VDPAU_MAX_PROFILES;
@@ -449,7 +464,7 @@ FLU_VA_DRIVERS_DRIVER_INIT (VADriverContextP ctx)
   ctx->max_image_formats = FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS;
   ctx->max_subpic_formats = FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS;
   ctx->max_display_attributes = FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES;
-  ctx->str_vendor = "Fluendo S.A.";
+  ctx->str_vendor = driver_data->va_vendor;
 
   memset (ctx->vtable, 0, sizeof (*ctx->vtable));
 
@@ -532,5 +547,5 @@ FLU_VA_DRIVERS_DRIVER_INIT (VADriverContextP ctx)
   ctx->vtable->vaSyncBuffer = flu_va_drivers_vdpau_SyncBuffer;
   ctx->vtable->vaCopy = flu_va_drivers_vdpau_Copy;
 
-  return VA_STATUS_ERROR_UNKNOWN;
+  return VA_STATUS_SUCCESS;
 }

@@ -1,15 +1,22 @@
 sources = [
   'flu_va_drivers_vdpau.c',
+  'flu_va_drivers_utils.c',
 ]
 
 headers = [
   'flu_va_drivers_vdpau.h',
+  'flu_va_drivers_utils.h',
 ]
 
 config = configuration_data()
 init_func_name = '__vaDriverInit_@0@_@1@'.format(libva_major_version,
                                                  libva_minor_version)
 config.set('FLU_VA_DRIVERS_DRIVER_INIT', init_func_name)
+config.set('FLU_VA_DRIVERS_MAJOR_VERSION', flu_va_drivers_major_version)
+config.set('FLU_VA_DRIVERS_MINOR_VERSION', flu_va_drivers_minor_version)
+config.set('FLU_VA_DRIVERS_MICRO_VERSION', flu_va_drivers_micro_version)
+config.set_quoted('FLU_VA_DRIVERS_VENDOR', 'Fluendo S.A.')
+config.set_quoted('FLU_VA_DRIVERS_COMMERCIAL_NAME', meson.project_name())
 config.set('VA_MAJOR_VERSION', libva_major_version)
 config.set('VA_MINOR_VERSION', libva_minor_version)
 config_file = configure_file(output: 'config.h', configuration: config)
