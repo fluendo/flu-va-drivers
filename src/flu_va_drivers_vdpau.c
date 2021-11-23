@@ -1,3 +1,4 @@
+#include <vdpau/vdpau.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -441,20 +442,37 @@ flu_va_drivers_vdpau_Copy (VADriverContextP ctx, VACopyObject *dst,
   return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-static void
+static VAStatus
 flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
 {
+  VADriverContextP ctx = driver_data->ctx;
+  VdpStatus vdp_st;
+
   flu_va_drivers_get_vendor (driver_data->va_vendor);
+
+  if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen,
+          &driver_data->vdp_device,
+          &driver_data->vdp_get_proc_address) != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_UNKNOWN;
+
+  return VA_STATUS_SUCCESS;
 }
 
 VAStatus
 FLU_VA_DRIVERS_DRIVER_INIT (VADriverContextP ctx)
 {
+  VAStatus res;
   FluVaDriversVdpauDriverData *driver_data;
 
   driver_data = calloc (1, sizeof (FluVaDriversVdpauDriverData));
+  driver_data->ctx = ctx;
   ctx->pDriverData = driver_data;
-  flu_va_drivers_vdpau_data_init (driver_data);
+
+  res = flu_va_drivers_vdpau_data_init (driver_data);
+  if (res != VA_STATUS_SUCCESS) {
+    flu_va_drivers_vdpau_Terminate (ctx);
+    return res;
+  };
 
   ctx->version_major = VA_MAJOR_VERSION;
   ctx->version_minor = VA_MINOR_VERSION;
