@@ -7,6 +7,7 @@
 #include <vdpau/vdpau_x11.h>
 #include <string.h>
 #include <stdlib.h>
+#include "flu_va_drivers_vdpau_vdp_device_impl.h"
 
 typedef struct _FluVaDriversVdpauDriverData FluVaDriversVdpauDriverData;
 
@@ -14,8 +15,7 @@ struct _FluVaDriversVdpauDriverData
 {
   VADriverContextP ctx;
   char va_vendor[256];
-  VdpDevice vdp_device;
-  VdpGetProcAddress *vdp_get_proc_address;
+  FluVaDriversVdpauVdpDeviceImpl vdp_impl;
 
   char _reserved[16];
 };

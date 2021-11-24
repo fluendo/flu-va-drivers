@@ -446,13 +446,18 @@ static VAStatus
 flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
 {
   VADriverContextP ctx = driver_data->ctx;
-  VdpStatus vdp_st;
+  VdpGetProcAddress *get_proc_address;
+  VdpDevice device;
 
   flu_va_drivers_get_vendor (driver_data->va_vendor);
 
-  if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen,
-          &driver_data->vdp_device,
-          &driver_data->vdp_get_proc_address) != VDP_STATUS_OK)
+  device = VDP_INVALID_HANDLE;
+  if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen, &device,
+          &get_proc_address) != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_UNKNOWN;
+
+  if (flu_va_drivers_vdpau_vdp_device_impl_init (
+          &driver_data->vdp_impl, &device, get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
 
   return VA_STATUS_SUCCESS;

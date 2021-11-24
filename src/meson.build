@@ -16,11 +16,13 @@ vdpau_dep = dependency('vdpau', version : '>= 1.1.1')
 if get_option('vdpau').enabled() and vdpau_dep.found()
   sources = [
     'flu_va_drivers_vdpau.c',
+    'flu_va_drivers_vdpau_vdp_device_impl.c',
     'flu_va_drivers_utils.c',
   ]
 
   headers = [
     'flu_va_drivers_vdpau.h',
+    'flu_va_drivers_vdpau_vdp_device_impl.h',
     'flu_va_drivers_utils.h',
   ]
 
