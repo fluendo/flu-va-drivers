@@ -6,6 +6,14 @@
 #include "flu_va_drivers_utils.h"
 
 // clang-format off
+#define _DEFAULT_OFFSET     24
+#define CONFIG_ID_OFFSET    1 << _DEFAULT_OFFSET
+#define CONTEXT_ID_OFFSET   2 << _DEFAULT_OFFSET
+#define SURFACE_ID_OFFSET   3 << _DEFAULT_OFFSET
+#define BUFFER_ID_OFFSET    4 << _DEFAULT_OFFSET
+#define IMAGE_ID_OFFSET     5 << _DEFAULT_OFFSET
+#define SUBPIC_ID_OFFSET    6 << _DEFAULT_OFFSET
+
 #define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              0
 #define FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS           0
 #define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES            0
@@ -17,7 +25,17 @@
 static VAStatus
 flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
 {
-  free (ctx->pDriverData);
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+
+  object_heap_destroy (&driver_data->config_heap);
+  object_heap_destroy (&driver_data->context_heap);
+  object_heap_destroy (&driver_data->surface_heap);
+  object_heap_destroy (&driver_data->buffer_heap);
+  object_heap_destroy (&driver_data->image_heap);
+  object_heap_destroy (&driver_data->subpic_heap);
+
+  free (driver_data);
 
   return VA_STATUS_SUCCESS;
 }
@@ -448,6 +466,7 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
   VADriverContextP ctx = driver_data->ctx;
   VdpGetProcAddress *get_proc_address;
   VdpDevice device;
+  int heap_sz = sizeof (struct object_heap);
 
   flu_va_drivers_get_vendor (driver_data->va_vendor);
 
@@ -459,6 +478,13 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
   if (flu_va_drivers_vdpau_vdp_device_impl_init (
           &driver_data->vdp_impl, &device, get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
+
+  object_heap_init (&driver_data->config_heap, heap_sz, CONFIG_ID_OFFSET);
+  object_heap_init (&driver_data->context_heap, heap_sz, CONTEXT_ID_OFFSET);
+  object_heap_init (&driver_data->surface_heap, heap_sz, SURFACE_ID_OFFSET);
+  object_heap_init (&driver_data->buffer_heap, heap_sz, BUFFER_ID_OFFSET);
+  object_heap_init (&driver_data->image_heap, heap_sz, IMAGE_ID_OFFSET);
+  object_heap_init (&driver_data->subpic_heap, heap_sz, SUBPIC_ID_OFFSET);
 
   return VA_STATUS_SUCCESS;
 }

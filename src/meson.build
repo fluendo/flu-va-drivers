@@ -18,12 +18,16 @@ if get_option('vdpau').enabled() and vdpau_dep.found()
     'flu_va_drivers_vdpau.c',
     'flu_va_drivers_vdpau_vdp_device_impl.c',
     'flu_va_drivers_utils.c',
+    '../ext/intel/intel-vaapi-drivers/object_heap.c'
   ]
 
   headers = [
     'flu_va_drivers_vdpau.h',
     'flu_va_drivers_vdpau_vdp_device_impl.h',
     'flu_va_drivers_utils.h',
+    '../ext/intel/intel-vaapi-drivers/object_heap.h',
+    '../ext/intel/intel-vaapi-drivers/i965_mutext.h',
+    '../ext/intel/intel-vaapi-drivers/intel_compiler.h'
   ]
 
   flu_va_drivers_vdpau_drv_video = shared_module(
