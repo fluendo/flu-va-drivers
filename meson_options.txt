@@ -1,0 +1,3 @@
+option('driverdir', type : 'string', description : 'libva drivers path')
+option('vdpau', type : 'feature', value : 'auto', description : 'Build vdpau bridge')
+
