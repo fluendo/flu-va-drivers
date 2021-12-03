@@ -1,0 +1,99 @@
+DEFAULT_NODE = 'docker-fluffgst-ubuntu-bionic'
+
+DRIVERS = [
+  'vdpau',
+]
+
+properties([
+    parameters([
+        extendedChoice(
+            name: 'DRIVERS',
+            value: DRIVERS.join(','),
+            defaultValue: 'vdpau',
+            description: 'The driver to build.',
+            type: 'PT_MULTI_SELECT',
+            visibleItemCount: DRIVERS.size(),
+        ),
+        string(
+            name: 'BRANCH',
+            defaultValue: '',
+            description: 'Branch to build the codec (to relase use VERSION)',
+        ),
+    ]),
+])
+
+node(DEFAULT_NODE) {
+    def cbc="flu-va-drivers-${env.BRANCH_NAME}.cbc"
+
+    stage('Setup') {
+        // checkout scm
+        sh 'git clone git@bitbucket.org:fluendo/flu-va-drivers.git'
+        checkoutCerbero()
+
+        dir('fluendo-cerbero') {
+            def _cbc = 'projects/flu-va-drivers/flu-va-drivers.cbc'
+            def recipes = params.DRIVERS.split(',').collect { "flu-va-drivers-${it}" }.join(' ')
+            sh (script: "./cerbero-uninstalled -t -c ${_cbc} gen-manifest-cbc ${recipes} ${env.BRANCH_NAME} ${_cbc} ${cbc}",
+                label: 'cerbero gen-manifest-cbc')
+            sh (script: "./cerbero-uninstalled -t -c ${cbc} bootstrap --fridge -y",
+                label: 'cerbero bootstrap')
+        }
+    }
+
+    for (driver in params.DRIVERS.split(',')) {
+        stage(driver) {
+            // Empty: Just to draw a beatiful node in BlueOcean.
+        }
+
+        def outputDirInWS = "packages/${driver}"
+        def outputDir = "${env.WORKSPACE}/${outputDirInWS}"
+        dir('fluendo-cerbero') {
+            def recipe = "flu-va-drivers-${driver}"
+            stage('Build') {
+                sh (script: "./cerbero-uninstalled -t -c ${cbc} build --fridge ${recipe}",
+                    label: 'cerbero build')
+            }
+
+            stage('Package') {
+                def pkg = "flu-va-drivers-${driver}"
+
+                sh "mkdir -p ${outputDir}"
+                sh (script: "./cerbero-uninstalled -t -c ${cbc} package --fridge ${recipe} -o ${outputDir}",
+                    label: 'cerbero package')
+            }
+        }
+
+        stage('Upload artifacts') {
+            archiveArtifacts(artifacts: "${outputDirInWS}/*.deb", allowEmptyArchive: true, fingerprint: true)
+        }
+    }
+}
+
+def checkoutCerbero() {
+    def cerberoRepo = 'git@github.com:fluendo/fluendo-cerbero.git'
+    def branchOrTag = getRepoBranch(cerberoRepo, env.BRANCH_NAME ?: '1.0', '1.0')
+
+    echo "Using fluendo-cerbero branch (or tag) '${branchOrTag}'"
+    sh "test -d fluendo-cerbero/.git || git clone --recurse-submodules -b 1.0 git@github.com:fluendo/fluendo-cerbero.git fluendo-cerbero"
+
+    sh "cd fluendo-cerbero && git reset --hard && git fetch --all --tags -f"
+    sh "cd fluendo-cerbero && git checkout ${branchOrTag} && (git reset --hard origin/${branchOrTag} || git reset --hard ${branchOrTag})"
+    sh "cd fluendo-cerbero && git submodule update --init --recursive"
+    sh "python3 -m pip install -r fluendo-cerbero/requirements.txt"
+}
+
+
+def getRepoBranch(repo, branchName, defaultBranch = '1.0', required=false) {
+    if (branchName == 'master' || branchName == '1.0') {
+        return defaultBranch
+    }
+
+    def res = sh(script: "git ls-remote --heads --tags ${repo} ${branchName} | wc -l", returnStdout: true).trim()
+    if (res == '1') {
+        return branchName
+    } else if (required) {
+        error("Branch or tag '${branchName}' doesn't exist in ${repo}")
+    }
+
+    return defaultBranch
+}
