@@ -1,9 +1,9 @@
-#include <vdpau/vdpau.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #include "flu_va_drivers_vdpau.h"
 #include "flu_va_drivers_utils.h"
+#include "flu_va_drivers_vdpau_utils.h"
 
 // clang-format off
 #define _DEFAULT_OFFSET     24
@@ -14,11 +14,13 @@
 #define IMAGE_ID_OFFSET     5 << _DEFAULT_OFFSET
 #define SUBPIC_ID_OFFSET    6 << _DEFAULT_OFFSET
 
-#define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              0
-#define FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS           0
-#define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES            0
-#define FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS         0
-#define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        0
+#define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              3
+#define FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS           1
+#define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES            1
+// This has been forced to 1 to make va_openDriver to pass.
+#define FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS         1
+// This has been forced to 1 to make va_openDriver to pass.
+#define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        1
 #define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
 // clang-format on
 
@@ -44,14 +46,62 @@ static VAStatus
 flu_va_drivers_vdpau_QueryConfigProfiles (
     VADriverContextP ctx, VAProfile *profile_list, int *num_profiles)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  VAProfile suported_profiles[FLU_VA_DRIVERS_VDPAU_MAX_PROFILES] = {
+    VAProfileH264ConstrainedBaseline, VAProfileH264Main, VAProfileH264High
+  };
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  int i;
+
+  for (i = 0, *num_profiles = 0; i < FLU_VA_DRIVERS_VDPAU_MAX_PROFILES; i++) {
+    VdpDecoderProfile vdp_profile;
+    VdpBool is_supported;
+    uint32_t unused_max_macroblocks, unused_max_level, unused_max_width,
+        unused_max_height;
+    VdpStatus vdp_st;
+    VAStatus va_st;
+
+    va_st = flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
+        suported_profiles[i], &vdp_profile);
+    if (va_st == VA_STATUS_ERROR_UNSUPPORTED_PROFILE)
+      continue;
+
+    vdp_st = driver_data->vdp_impl.vdp_decoder_query_capabilities (
+        driver_data->vdp_impl.vdp_device, vdp_profile, &is_supported,
+        &unused_max_level, &unused_max_macroblocks, &unused_max_width,
+        &unused_max_height);
+
+    if (vdp_st != VDP_STATUS_OK)
+      goto vdp_query_failed;
+    if (!is_supported)
+      continue;
+
+    profile_list[(*num_profiles)++] = suported_profiles[i];
+  }
+
+  return VA_STATUS_SUCCESS;
+
+vdp_query_failed:
+  return VA_STATUS_ERROR_UNKNOWN;
 }
 
 static VAStatus
 flu_va_drivers_vdpau_QueryConfigEntrypoints (VADriverContextP ctx,
     VAProfile profile, VAEntrypoint *entrypoint_list, int *num_entrypoints)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  *num_entrypoints = 0;
+
+  switch (profile) {
+    case VAProfileH264ConstrainedBaseline:
+    case VAProfileH264Main:
+    case VAProfileH264High:
+      entrypoint_list[(*num_entrypoints)++] = VAEntrypointVLD;
+      break;
+    default:
+      break;
+  }
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -59,7 +109,22 @@ flu_va_drivers_vdpau_GetConfigAttributes (VADriverContextP ctx,
     VAProfile profile, VAEntrypoint entrypoint, VAConfigAttrib *attrib_list,
     int num_attribs)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  int i;
+
+  // For vdpau >= 1.2, we should check if the chroma type is supported by
+  // calling VdpDecoderQueryProfileCapability.
+  for (i = 0; i < num_attribs; i++) {
+    switch (attrib_list[i].type) {
+      case VAConfigAttribRTFormat:
+        attrib_list[i].value = VA_RT_FORMAT_YUV420;
+        break;
+      default:
+        attrib_list[i].value = VA_ATTRIB_NOT_SUPPORTED;
+        break;
+    }
+  }
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
