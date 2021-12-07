@@ -476,7 +476,7 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
     return VA_STATUS_ERROR_UNKNOWN;
 
   if (flu_va_drivers_vdpau_vdp_device_impl_init (
-          &driver_data->vdp_impl, &device, get_proc_address) != VDP_STATUS_OK)
+          &driver_data->vdp_impl, device, get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
 
   object_heap_init (&driver_data->config_heap, heap_sz, CONFIG_ID_OFFSET);
