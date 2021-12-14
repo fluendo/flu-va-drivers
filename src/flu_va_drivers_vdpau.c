@@ -530,12 +530,14 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
 {
   VADriverContextP ctx = driver_data->ctx;
   VdpGetProcAddress *get_proc_address;
-  VdpDevice device;
+  VdpDevice device = VDP_INVALID_HANDLE;
   int heap_sz = sizeof (struct object_heap);
 
   flu_va_drivers_get_vendor (driver_data->va_vendor);
 
-  device = VDP_INVALID_HANDLE;
+  if (ctx->display_type != VA_DISPLAY_X11)
+    return VA_STATUS_ERROR_INVALID_DISPLAY;
+
   if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen, &device,
           &get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
