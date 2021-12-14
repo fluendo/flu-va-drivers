@@ -2,13 +2,15 @@
 
 VdpStatus
 flu_va_drivers_vdpau_vdp_device_impl_init (
-    FluVaDriversVdpauVdpDeviceImpl *self, VdpDevice *device,
-    VdpGetProcAddress *get_proc_addr)
+    FluVaDriversVdpauVdpDeviceImpl *self, VdpDevice device,
+    VdpGetProcAddress get_proc_addr)
 {
+  self->vdp_device = device;
 #define _DEV_FUNC(func_id, func)                                              \
   if (get_proc_addr (self->vdp_device, VDP_FUNC_ID_##func_id,                 \
           (void **) &self->vdp_##func) != VDP_STATUS_OK)                      \
     return VDP_STATUS_ERROR;
+
   _DEV_FUNC (GET_API_VERSION, get_api_version)
   _DEV_FUNC (GET_INFORMATION_STRING, get_information_string)
   _DEV_FUNC (DEVICE_DESTROY, device_destroy)

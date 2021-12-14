@@ -82,7 +82,7 @@ struct _FluVaDriversVdpauVdpDeviceImpl
 };
 
 VdpStatus flu_va_drivers_vdpau_vdp_device_impl_init (
-    FluVaDriversVdpauVdpDeviceImpl *self, VdpDevice *device,
-    VdpGetProcAddress *get_proc_addr);
+    FluVaDriversVdpauVdpDeviceImpl *self, VdpDevice device,
+    VdpGetProcAddress get_proc_addr);
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_VDP_DEVICE_IMPL_H__ */
