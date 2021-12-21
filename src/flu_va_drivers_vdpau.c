@@ -266,7 +266,36 @@ static VAStatus
 flu_va_drivers_vdpau_QueryImageFormats (
     VADriverContextP ctx, VAImageFormat *format_list, int *num_formats)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauVdpDeviceImpl impl = driver_data->vdp_impl;
+  const FluVaDriversVdpauImageFormatMapItem *item =
+      FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP;
+
+  *num_formats = 0;
+  while (item->type != FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_NONE) {
+    VdpStatus vdp_st;
+    VdpBool is_format_supported = 0;
+
+    switch (item->type) {
+      case FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_YCBCR:
+        vdp_st =
+            impl.vdp_video_surface_query_get_put_bits_y_cb_cr_capabilities (
+                driver_data->vdp_impl.vdp_device, VDP_CHROMA_TYPE_420,
+                item->vdp_image_format, &is_format_supported);
+        break;
+      default:
+        vdp_st = VDP_STATUS_NO_IMPLEMENTATION;
+        break;
+    }
+
+    if (vdp_st == VDP_STATUS_OK && is_format_supported)
+      format_list[(*num_formats)++] = item->va_image_format;
+
+    item++;
+  }
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
