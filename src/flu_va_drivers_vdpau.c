@@ -132,13 +132,30 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
     VAEntrypoint entrypoint, VAConfigAttrib *attrib_list, int num_attribs,
     VAConfigID *config_id)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+
+  *config_id = object_heap_allocate (&driver_data->config_heap);
+  if (*config_id == -1)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
 flu_va_drivers_vdpau_DestroyConfig (VADriverContextP ctx, VAConfigID config_id)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  object_base_p config_obj;
+
+  config_obj = object_heap_lookup (&driver_data->config_heap, config_id);
+  if (config_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  object_heap_free (&driver_data->config_heap, config_obj);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
