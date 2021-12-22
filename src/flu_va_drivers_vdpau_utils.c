@@ -33,3 +33,41 @@ flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
 
   return ret;
 }
+
+VAConfigAttrib *
+flu_va_drivers_vdpau_lookup_config_attrib_type (VAConfigAttrib *attrib_list,
+    int num_attribs, VAConfigAttribType attrib_type)
+{
+  int i;
+
+  for (i = 0; i < num_attribs; i++) {
+    if (attrib_list[i].type == attrib_type)
+      return &attrib_list[i];
+  }
+  return NULL;
+}
+
+int
+flu_va_drivers_vdpau_is_profile_supported (VAProfile va_profile)
+{
+  VdpDecoderProfile vdp_profile;
+  VAStatus st;
+
+  st = flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
+      va_profile, &vdp_profile);
+
+  return st != VA_STATUS_SUCCESS;
+}
+
+int
+flu_va_drivers_vdpau_is_entrypoint_supported (VAEntrypoint va_entrypoint)
+{
+  return va_entrypoint != VAEntrypointVLD;
+}
+
+int
+flu_va_drivers_vdpau_is_config_attrib_type_supported (
+    VAConfigAttribType va_attrib_type)
+{
+  return va_attrib_type != VAConfigAttribRTFormat;
+}

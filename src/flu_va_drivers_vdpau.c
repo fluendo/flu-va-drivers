@@ -111,6 +111,11 @@ flu_va_drivers_vdpau_GetConfigAttributes (VADriverContextP ctx,
 {
   int i;
 
+  if (flu_va_drivers_vdpau_is_profile_supported (profile))
+    return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+    return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+
   // For vdpau >= 1.2, we should check if the chroma type is supported by
   // calling VdpDecoderQueryProfileCapability.
   for (i = 0; i < num_attribs; i++) {
@@ -134,10 +139,35 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauConfigObject *config_obj;
+  VAConfigAttrib *attrib;
+
+  if (flu_va_drivers_vdpau_is_profile_supported (profile))
+    return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+    return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
   *config_id = object_heap_allocate (&driver_data->config_heap);
   if (*config_id == -1)
     return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, *config_id);
+  assert (config_obj != NULL);
+
+  config_obj->profile = profile;
+  config_obj->entrypoint = entrypoint;
+  config_obj->num_attribs = 0;
+
+  attrib = flu_va_drivers_vdpau_lookup_config_attrib_type (
+      attrib_list, num_attribs, VAConfigAttribRTFormat);
+  /* Only store the attribs that are actually supported. */
+  if (attrib &&
+      !flu_va_drivers_vdpau_is_config_attrib_type_supported (attrib->type) &&
+      attrib->value == VA_RT_FORMAT_YUV420) {
+    config_obj->attrib_list[0].type = VAConfigAttribRTFormat;
+    config_obj->attrib_list[0].value = VA_RT_FORMAT_YUV420;
+    config_obj->num_attribs = 1;
+  }
 
   return VA_STATUS_SUCCESS;
 }
@@ -147,13 +177,14 @@ flu_va_drivers_vdpau_DestroyConfig (VADriverContextP ctx, VAConfigID config_id)
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
-  object_base_p config_obj;
+  FluVaDriversVdpauConfigObject *config_obj;
 
-  config_obj = object_heap_lookup (&driver_data->config_heap, config_id);
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, config_id);
   if (config_obj == NULL)
     return VA_STATUS_ERROR_INVALID_CONFIG;
 
-  object_heap_free (&driver_data->config_heap, config_obj);
+  object_heap_free (&driver_data->config_heap, (object_base_p) config_obj);
 
   return VA_STATUS_SUCCESS;
 }
@@ -592,7 +623,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
           &driver_data->vdp_impl, device, get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
 
-  object_heap_init (&driver_data->config_heap, heap_sz, CONFIG_ID_OFFSET);
+  object_heap_init (&driver_data->config_heap,
+      sizeof (FluVaDriversVdpauConfigObject), CONFIG_ID_OFFSET);
   object_heap_init (&driver_data->context_heap, heap_sz, CONTEXT_ID_OFFSET);
   object_heap_init (&driver_data->surface_heap, heap_sz, SURFACE_ID_OFFSET);
   object_heap_init (&driver_data->buffer_heap, heap_sz, BUFFER_ID_OFFSET);
