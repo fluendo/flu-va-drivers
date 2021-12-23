@@ -11,6 +11,19 @@
 #include <stdlib.h>
 #include "flu_va_drivers_vdpau_vdp_device_impl.h"
 #include "../ext/intel/intel-vaapi-drivers/object_heap.h"
+#include "object_heap/object_heap_utils.h"
+
+// clang-format off
+#define FLU_VA_DRIVERS_VDPAU_MAX_PROFILES              3
+#define FLU_VA_DRIVERS_VDPAU_MAX_ENTRYPOINTS           1
+#define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES            1
+#define FLU_VA_DRIVERS_VDPAU_MAX_SURFACE_ATTRIBUTES    32
+// This has been forced to 1 to make va_openDriver to pass.
+#define FLU_VA_DRIVERS_VDPAU_MAX_IMAGE_FORMATS         1
+// This has been forced to 1 to make va_openDriver to pass.
+#define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        1
+#define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
+// clang-format on
 
 typedef struct _FluVaDriversVdpauDriverData FluVaDriversVdpauDriverData;
 
@@ -41,7 +54,16 @@ struct _FluVaDriversVdpauConfigObject
   VAConfigAttrib attrib_list[FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES];
   unsigned int num_attribs;
 };
-
 typedef struct _FluVaDriversVdpauConfigObject FluVaDriversVdpauConfigObject;
+
+struct _FluVaDriversVdpauSurfaceObject
+{
+  struct object_base base;
+  unsigned int format;
+  unsigned int width;
+  unsigned int height;
+  VdpVideoSurface vdp_surface;
+};
+typedef struct _FluVaDriversVdpauSurfaceObject FluVaDriversVdpauSurfaceObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */
