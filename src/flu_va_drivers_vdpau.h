@@ -1,6 +1,7 @@
 #ifndef __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__
 #define __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__
 
+#include <assert.h>
 #include <va/va.h>
 #include <va/va_backend.h>
 #include <vdpau/vdpau.h>
@@ -26,5 +27,18 @@ struct _FluVaDriversVdpauDriverData
 
   char _reserved[16];
 };
+
+#define FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES 1
+
+struct _FluVaDriversVdpauConfigObject
+{
+  struct object_base base;
+  VAProfile profile;
+  VAEntrypoint entrypoint;
+  VAConfigAttrib attrib_list[FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES];
+  unsigned int num_attribs;
+};
+
+typedef struct _FluVaDriversVdpauConfigObject FluVaDriversVdpauConfigObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */
