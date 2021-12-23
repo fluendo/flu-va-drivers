@@ -1,3 +1,5 @@
+#include <va/va.h>
+#include <vdpau/vdpau.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -141,9 +143,23 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
   FluVaDriversVdpauConfigObject *config_obj;
   VAConfigAttrib *attrib;
+  VdpStatus vdp_st;
+  VAStatus va_st;
+  VdpDecoderProfile vdp_profile;
+  uint32_t unused_max_level, unused_max_macroblocks, max_width, max_height;
+  VdpBool is_profile_supported;
 
-  if (flu_va_drivers_vdpau_is_profile_supported (profile))
+  va_st = flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
+      profile, &vdp_profile);
+  if (va_st != VA_STATUS_SUCCESS)
     return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+  /* Check profile hardware support */
+  vdp_st = driver_data->vdp_impl.vdp_decoder_query_capabilities (
+      driver_data->vdp_impl.vdp_device, vdp_profile, &is_profile_supported,
+      &unused_max_level, &unused_max_macroblocks, &max_width, &max_height);
+  if (vdp_st != VDP_STATUS_OK || !is_profile_supported)
+    return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+
   if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
     return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
@@ -155,6 +171,8 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
   assert (config_obj != NULL);
 
   config_obj->profile = profile;
+  config_obj->max_width = max_width;
+  config_obj->max_height = max_height;
   config_obj->entrypoint = entrypoint;
   config_obj->num_attribs = 0;
 
@@ -511,10 +529,52 @@ flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
 }
 
 static VAStatus
-flu_va_drivers_vdpau_QuerySurfaceAttributes (VADriverContextP dpy,
+flu_va_drivers_vdpau_QuerySurfaceAttributes (VADriverContextP ctx,
     VAConfigID config, VASurfaceAttrib *attrib_list, unsigned int *num_attribs)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauConfigObject *config_obj;
+
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, config);
+  if (!config_obj)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  if (num_attribs == NULL)
+    return VA_STATUS_ERROR_INVALID_PARAMETER;
+
+  /* vaQuerySurfaceAttributes can be used just to determine the number of
+   * supported attributes according the libva reference manual. */
+  *num_attribs = 4;
+  if (!attrib_list)
+    return VA_STATUS_SUCCESS;
+
+  attrib_list[0].type = VASurfaceAttribMaxWidth;
+  attrib_list[0].flags = VA_SURFACE_ATTRIB_GETTABLE;
+  attrib_list[0].value.type = VAGenericValueTypeInteger;
+  attrib_list[0].value.value.i = config_obj->max_width;
+
+  attrib_list[1].type = VASurfaceAttribMaxHeight;
+  attrib_list[1].flags = VA_SURFACE_ATTRIB_GETTABLE;
+  attrib_list[1].value.type = VAGenericValueTypeInteger;
+  attrib_list[1].value.value.i = config_obj->max_height;
+
+  /* We only support VA_FOURCC_NV12 for now. */
+  attrib_list[2].type = VASurfaceAttribPixelFormat;
+  /* HACK: Don't support to write this attribute, even when docs allow it. */
+  attrib_list[2].flags = VA_SURFACE_ATTRIB_GETTABLE;
+  attrib_list[2].value.type = VAGenericValueTypeInteger;
+  attrib_list[2].value.value.i = VA_FOURCC_NV12;
+
+  /* NOTE: Not sure if this is needed, but include for now. */
+  attrib_list[3].type = VASurfaceAttribMemoryType;
+  /* HACK: Don't support to write this attribute, even when docs allow it. */
+  attrib_list[3].flags = VA_SURFACE_ATTRIB_GETTABLE;
+  attrib_list[3].value.type = VAGenericValueTypeInteger;
+  attrib_list[3].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus

@@ -2,6 +2,7 @@
 #define __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__
 
 #include <assert.h>
+#include <stdint.h>
 #include <va/va.h>
 #include <va/va_backend.h>
 #include <vdpau/vdpau.h>
@@ -34,6 +35,8 @@ struct _FluVaDriversVdpauConfigObject
 {
   struct object_base base;
   VAProfile profile;
+  uint32_t max_width;
+  uint32_t max_height;
   VAEntrypoint entrypoint;
   VAConfigAttrib attrib_list[FLU_VA_DRIVERS_VDPAU_MAX_ATTRIBUTES];
   unsigned int num_attribs;
