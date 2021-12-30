@@ -79,4 +79,14 @@ struct _FluVaDriversVdpauContextObject
 };
 typedef struct _FluVaDriversVdpauContextObject FluVaDriversVdpauContextObject;
 
+struct _FluVaDriversVdpauBufferObject
+{
+  struct object_base base;
+  VABufferType type;
+  void *data;
+  size_t size;
+  unsigned int num_elements;
+};
+typedef struct _FluVaDriversVdpauBufferObject FluVaDriversVdpauBufferObject;
+
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */

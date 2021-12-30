@@ -348,7 +348,41 @@ flu_va_drivers_vdpau_CreateBuffer (VADriverContextP ctx, VAContextID context,
     VABufferType type, unsigned int size, unsigned int num_elements,
     void *data, VABufferID *buf_id)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauBufferObject *buffer_obj;
+  int buffer_obj_id;
+
+  // Support only num_elements == 1, because this is the use-case of most of
+  // the programs, including Chromium that is what we target in this project.
+  if (data == NULL || size == 0 || num_elements != 1)
+    return VA_STATUS_ERROR_INVALID_VALUE;
+
+  switch (type) {
+    case VAPictureParameterBufferType:
+    case VAIQMatrixBufferType:
+    case VASliceParameterBufferType:
+    case VASliceDataBufferType:
+      break;
+    default:
+      return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
+  }
+
+  buffer_obj_id = object_heap_allocate (&driver_data->buffer_heap);
+  if (buffer_obj_id == -1)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  *buf_id = buffer_obj_id;
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, *buf_id);
+  assert (buffer_obj != NULL);
+
+  buffer_obj->type = type;
+  buffer_obj->size = size;
+  buffer_obj->num_elements = num_elements;
+  buffer_obj->data = malloc (buffer_obj->size);
+  memcpy (buffer_obj->data, data, buffer_obj->size * buffer_obj->num_elements);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -374,7 +408,20 @@ flu_va_drivers_vdpau_UnmapBuffer (VADriverContextP ctx, VABufferID buf_id)
 static VAStatus
 flu_va_drivers_vdpau_DestroyBuffer (VADriverContextP ctx, VABufferID buffer_id)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauBufferObject *buffer_obj;
+
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, buffer_id);
+  if (buffer_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_BUFFER;
+
+  assert (buffer_obj->data);
+  free (buffer_obj->data);
+  object_heap_free (&driver_data->buffer_heap, (object_base_p) buffer_obj);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -851,7 +898,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
       sizeof (FluVaDriversVdpauContextObject), CONTEXT_ID_OFFSET);
   object_heap_init (&driver_data->surface_heap,
       sizeof (FluVaDriversVdpauSurfaceObject), SURFACE_ID_OFFSET);
-  object_heap_init (&driver_data->buffer_heap, heap_sz, BUFFER_ID_OFFSET);
+  object_heap_init (&driver_data->buffer_heap,
+      sizeof (FluVaDriversVdpauBufferObject), BUFFER_ID_OFFSET);
   object_heap_init (&driver_data->image_heap, heap_sz, IMAGE_ID_OFFSET);
   object_heap_init (&driver_data->subpic_heap, heap_sz, SUBPIC_ID_OFFSET);
 
