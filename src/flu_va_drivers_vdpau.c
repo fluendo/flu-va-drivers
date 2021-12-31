@@ -396,13 +396,37 @@ static VAStatus
 flu_va_drivers_vdpau_MapBuffer (
     VADriverContextP ctx, VABufferID buf_id, void **pbuf)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauBufferObject *buffer_obj;
+
+  if (pbuf == NULL)
+    return VA_STATUS_ERROR_INVALID_PARAMETER;
+
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, buf_id);
+  if (buffer_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_BUFFER;
+
+  assert (buffer_obj->data != NULL);
+  *pbuf = buffer_obj->data;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
 flu_va_drivers_vdpau_UnmapBuffer (VADriverContextP ctx, VABufferID buf_id)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauBufferObject *buffer_obj;
+
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, buf_id);
+  if (buffer_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_BUFFER;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
