@@ -3,6 +3,8 @@
 
 #include <vdpau/vdpau.h>
 #include <va/va.h>
+#include <va/va_backend.h>
+#include "flu_va_drivers_vdpau.h"
 
 typedef enum
 {
@@ -37,5 +39,9 @@ int flu_va_drivers_vdpau_is_config_attrib_type_supported (
 VAConfigAttrib *flu_va_drivers_vdpau_lookup_config_attrib_type (
     VAConfigAttrib *attrib_list, int num_attribs,
     VAConfigAttribType attrib_type);
+
+VAStatus flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    FluVaDriversVdpauBufferObject *buffer_obj);
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_UTILS_H__ */

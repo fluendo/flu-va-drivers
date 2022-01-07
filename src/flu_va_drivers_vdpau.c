@@ -293,9 +293,13 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->flag = flag;
   context_obj->picture_width = picture_width;
   context_obj->picture_height = picture_height;
+  memset (&context_obj->vdp_pic_info, 0, sizeof (context_obj->vdp_pic_info));
   context_obj->render_targets =
       calloc (num_render_targets, sizeof (VASurfaceID));
   context_obj->num_render_targets = num_render_targets;
+  context_obj->last_slice_param = NULL;
+  context_obj->vdp_bs_buf = NULL;
+  context_obj->num_vdp_bs_buf = 0;
 
   do {
     FluVaDriversVdpauSurfaceObject *surface_obj;
