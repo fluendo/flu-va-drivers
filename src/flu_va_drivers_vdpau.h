@@ -77,6 +77,7 @@ struct _FluVaDriversVdpauContextObject
   unsigned int flag;
   int picture_width;
   int picture_height;
+  VASurfaceID current_render_target;
   VdpPictureInfoH264 vdp_pic_info;
   VASurfaceID *render_targets;
   unsigned int num_render_targets;

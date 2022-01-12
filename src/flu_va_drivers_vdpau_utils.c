@@ -72,6 +72,19 @@ flu_va_drivers_vdpau_is_config_attrib_type_supported (
   return va_attrib_type != VAConfigAttribRTFormat;
 }
 
+void
+flu_va_drivers_vdpau_context_object_reset (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  context_obj->current_render_target = VA_INVALID_ID;
+  memset (&context_obj->vdp_pic_info, 0, sizeof (context_obj->vdp_pic_info));
+  context_obj->last_slice_param = NULL;
+  if (context_obj->vdp_bs_buf != NULL)
+    free (context_obj->vdp_bs_buf);
+  context_obj->vdp_bs_buf = NULL;
+  context_obj->num_vdp_bs_buf = 0;
+}
+
 static void
 flu_va_drivers_vdpau_context_object_append_vdp_bs_buf (
     FluVaDriversVdpauContextObject *context_obj, const uint8_t *bs_data,
