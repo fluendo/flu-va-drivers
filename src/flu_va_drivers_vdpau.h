@@ -59,11 +59,24 @@ typedef struct _FluVaDriversVdpauConfigObject FluVaDriversVdpauConfigObject;
 struct _FluVaDriversVdpauSurfaceObject
 {
   struct object_base base;
+  VAContextID context_id;
   unsigned int format;
   unsigned int width;
   unsigned int height;
   VdpVideoSurface vdp_surface;
 };
 typedef struct _FluVaDriversVdpauSurfaceObject FluVaDriversVdpauSurfaceObject;
+
+struct _FluVaDriversVdpauContextObject
+{
+  struct object_base base;
+  VAConfigID config_id;
+  unsigned int flag;
+  int picture_width;
+  int picture_height;
+  VASurfaceID *render_targets;
+  unsigned int num_render_targets;
+};
+typedef struct _FluVaDriversVdpauContextObject FluVaDriversVdpauContextObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */

@@ -251,18 +251,96 @@ flu_va_drivers_vdpau_DestroySurfaces (
   return ret;
 }
 
+static void
+flu_va_drivers_vdpau_destroy_context (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+
+  free (context_obj->render_targets);
+  object_heap_free (&driver_data->context_heap, (object_base_p) context_obj);
+}
+
 static VAStatus
 flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
     int picture_width, int picture_height, int flag,
     VASurfaceID *render_targets, int num_render_targets, VAContextID *context)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauConfigObject *config_obj;
+  FluVaDriversVdpauContextObject *context_obj;
+  int i = 0, context_obj_id;
+
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, config_id);
+  if (config_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  context_obj_id = object_heap_allocate (&driver_data->context_heap);
+  if (context_obj_id == -1)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, context_obj_id);
+  assert (context_obj != NULL);
+
+  if (picture_width > config_obj->max_width ||
+      picture_height > config_obj->max_height)
+    return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
+
+  context_obj->config_id = config_id;
+  context_obj->flag = flag;
+  context_obj->picture_width = picture_width;
+  context_obj->picture_height = picture_height;
+  context_obj->render_targets =
+      calloc (num_render_targets, sizeof (VASurfaceID));
+  context_obj->num_render_targets = num_render_targets;
+
+  do {
+    FluVaDriversVdpauSurfaceObject *surface_obj;
+    surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+        &driver_data->surface_heap, render_targets[i]);
+
+    if (surface_obj == NULL || surface_obj->context_id != VA_INVALID_ID)
+      goto invalid_surface;
+
+    context_obj->render_targets[i] = render_targets[i];
+    surface_obj->context_id = (VAContextID) context_obj_id;
+  } while (++i < num_render_targets);
+
+  *context = context_obj_id;
+  return VA_STATUS_SUCCESS;
+
+invalid_surface:
+  while (i--) {
+    FluVaDriversVdpauSurfaceObject *surface_obj;
+    surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+        &driver_data->surface_heap, render_targets[i]);
+    assert (surface_obj != NULL);
+
+    surface_obj->context_id = VA_INVALID_ID;
+  }
+  flu_va_drivers_vdpau_destroy_context (ctx, context_obj);
+
+  return VA_STATUS_ERROR_INVALID_SURFACE;
 }
 
 static VAStatus
 flu_va_drivers_vdpau_DestroyContext (VADriverContextP ctx, VAContextID context)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  object_base_p context_obj;
+
+  context_obj = object_heap_lookup (&driver_data->context_heap, context);
+  if (context_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  flu_va_drivers_vdpau_destroy_context (
+      ctx, (FluVaDriversVdpauContextObject *) context_obj);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -570,6 +648,7 @@ flu_va_drivers_vdpau_create_surface (VADriverContextP ctx, int width,
   assert (surface_obj != NULL);
 
   *surface_id = surface_obj_id;
+  surface_obj->context_id = VA_INVALID_ID;
   surface_obj->format = format;
   surface_obj->width = width;
   surface_obj->height = height;
@@ -604,8 +683,9 @@ flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
       break;
   }
 
-  if (va_st != VA_STATUS_SUCCESS)
+  if (va_st != VA_STATUS_SUCCESS) {
     flu_va_drivers_vdpau_DestroySurfaces (ctx, surfaces, i);
+  }
 
   return va_st;
 }
@@ -767,7 +847,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
 
   object_heap_init (&driver_data->config_heap,
       sizeof (FluVaDriversVdpauConfigObject), CONFIG_ID_OFFSET);
-  object_heap_init (&driver_data->context_heap, heap_sz, CONTEXT_ID_OFFSET);
+  object_heap_init (&driver_data->context_heap,
+      sizeof (FluVaDriversVdpauContextObject), CONTEXT_ID_OFFSET);
   object_heap_init (&driver_data->surface_heap,
       sizeof (FluVaDriversVdpauSurfaceObject), SURFACE_ID_OFFSET);
   object_heap_init (&driver_data->buffer_heap, heap_sz, BUFFER_ID_OFFSET);
