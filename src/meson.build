@@ -19,6 +19,7 @@ if get_option('vdpau').enabled() and vdpau_dep.found()
     'flu_va_drivers_vdpau_vdp_device_impl.c',
     'flu_va_drivers_utils.c',
     'flu_va_drivers_vdpau_utils.c',
+    'object_heap/object_heap_utils.c',
     '../ext/intel/intel-vaapi-drivers/object_heap.c'
   ]
 
@@ -27,6 +28,7 @@ if get_option('vdpau').enabled() and vdpau_dep.found()
     'flu_va_drivers_vdpau_vdp_device_impl.h',
     'flu_va_drivers_utils.h',
     'flu_va_drivers_vdpau_utils.h',
+    'object_heap/object_heap_utils.h',
     '../ext/intel/intel-vaapi-drivers/object_heap.h',
     '../ext/intel/intel-vaapi-drivers/i965_mutext.h',
     '../ext/intel/intel-vaapi-drivers/intel_compiler.h'
