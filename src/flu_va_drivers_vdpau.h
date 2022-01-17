@@ -74,6 +74,7 @@ struct _FluVaDriversVdpauContextObject
 {
   struct object_base base;
   VAConfigID config_id;
+  VdpDecoder vdp_decoder;
   unsigned int flag;
   int picture_width;
   int picture_height;

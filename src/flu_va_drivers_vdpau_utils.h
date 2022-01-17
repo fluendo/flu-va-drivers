@@ -46,4 +46,6 @@ VAStatus flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
 void flu_va_drivers_vdpau_context_object_reset (
     FluVaDriversVdpauContextObject *context_obj);
 
+int flu_va_driver_vdpau_is_buffer_type_supported (VABufferType buffer_type);
+
 #endif /* __FLU_VA_DRIVERS_VDPAU_UTILS_H__ */
