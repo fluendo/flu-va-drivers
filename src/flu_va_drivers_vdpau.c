@@ -668,7 +668,20 @@ static VAStatus
 flu_va_drivers_vdpau_BufferInfo (VADriverContextP ctx, VABufferID buf_id,
     VABufferType *type, unsigned int *size, unsigned int *num_elements)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauBufferObject *buffer_obj;
+
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, buf_id);
+  if (buffer_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_BUFFER;
+
+  *type = buffer_obj->type;
+  *size = buffer_obj->size;
+  *num_elements = buffer_obj->num_elements;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus

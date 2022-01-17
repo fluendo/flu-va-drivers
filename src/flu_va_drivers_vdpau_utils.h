@@ -3,7 +3,6 @@
 
 #include <vdpau/vdpau.h>
 #include <va/va.h>
-#include <va/va_backend.h>
 #include "flu_va_drivers_vdpau.h"
 
 typedef enum
