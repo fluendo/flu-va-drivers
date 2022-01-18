@@ -25,6 +25,9 @@
 #define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
 // clang-format on
 
+static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
+static const uint8_t NALU_START_CODE_4[4] = { 0x00, 0x00, 0x0, 0x01 };
+
 typedef struct _FluVaDriversVdpauDriverData FluVaDriversVdpauDriverData;
 
 struct _FluVaDriversVdpauDriverData
@@ -74,9 +77,25 @@ struct _FluVaDriversVdpauContextObject
   unsigned int flag;
   int picture_width;
   int picture_height;
+  VdpPictureInfoH264 vdp_pic_info;
   VASurfaceID *render_targets;
   unsigned int num_render_targets;
+  /* Only one needed, because we support only 1 element per buffer */
+  VABufferType last_buffer_type;
+  VASliceParameterBufferH264 *last_slice_param;
+  VdpBitstreamBuffer *vdp_bs_buf;
+  unsigned int num_vdp_bs_buf;
 };
 typedef struct _FluVaDriversVdpauContextObject FluVaDriversVdpauContextObject;
+
+struct _FluVaDriversVdpauBufferObject
+{
+  struct object_base base;
+  VABufferType type;
+  void *data;
+  size_t size;
+  unsigned int num_elements;
+};
+typedef struct _FluVaDriversVdpauBufferObject FluVaDriversVdpauBufferObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */
