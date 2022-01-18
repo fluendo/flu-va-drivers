@@ -32,6 +32,9 @@ static VAStatus get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
 #define SUBPIC_ID_OFFSET    6 << _DEFAULT_OFFSET
 // clang-format on
 
+// As an optimization, align buffers to 16-byte boundary
+#define BUFFER_ALIGNMENT 16
+
 static VAStatus
 flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
 {
@@ -755,6 +758,20 @@ flu_va_drivers_vdpau_CreateImage (VADriverContextP ctx, VAImageFormat *format,
       ctx, 0, VAImageBufferType, va_image->data_size, 1, NULL, &va_image->buf);
   if (ret != VA_STATUS_SUCCESS)
     goto error;
+
+#if BUFFER_ALIGNMENT > 1
+  FluVaDriversVdpauBufferObject *buffer_obj =
+    (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, va_image->buf);
+  assert (buffer_obj != NULL);
+
+  int offset = ((uintptr_t)buffer_obj->data) % BUFFER_ALIGNMENT;
+  if (offset) {
+    offset = BUFFER_ALIGNMENT - offset;
+    for (int i = 0; i < va_image->num_planes; i++)
+      va_image->offsets[i] += offset;
+  }
+#endif
 
   *image = *va_image;
   return VA_STATUS_SUCCESS;
