@@ -293,13 +293,11 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->flag = flag;
   context_obj->picture_width = picture_width;
   context_obj->picture_height = picture_height;
-  memset (&context_obj->vdp_pic_info, 0, sizeof (context_obj->vdp_pic_info));
   context_obj->render_targets =
       calloc (num_render_targets, sizeof (VASurfaceID));
   context_obj->num_render_targets = num_render_targets;
-  context_obj->last_slice_param = NULL;
   context_obj->vdp_bs_buf = NULL;
-  context_obj->num_vdp_bs_buf = 0;
+  flu_va_drivers_vdpau_context_object_reset (context_obj);
 
   do {
     FluVaDriversVdpauSurfaceObject *surface_obj;
@@ -456,7 +454,26 @@ static VAStatus
 flu_va_drivers_vdpau_BeginPicture (
     VADriverContextP ctx, VAContextID context, VASurfaceID render_target)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauContextObject *context_obj;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, render_target);
+  if (surface_obj == NULL || surface_obj->context_id != context)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, context);
+  if (context_obj == NULL ||
+      context_obj->current_render_target != VA_INVALID_ID)
+    return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+  flu_va_drivers_vdpau_context_object_reset (context_obj);
+  context_obj->current_render_target = render_target;
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -469,7 +486,18 @@ flu_va_drivers_vdpau_RenderPicture (VADriverContextP ctx, VAContextID context,
 static VAStatus
 flu_va_drivers_vdpau_EndPicture (VADriverContextP ctx, VAContextID context)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauContextObject *context_obj;
+
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, context);
+  if (context_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+  flu_va_drivers_vdpau_context_object_reset (context_obj);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
