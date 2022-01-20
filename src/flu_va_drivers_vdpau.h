@@ -28,6 +28,12 @@
 static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
 static const uint8_t NALU_START_CODE_4[4] = { 0x00, 0x00, 0x0, 0x01 };
 
+typedef enum
+{
+  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR,
+  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_NONE
+} FluVaDriversVdpauImageFormatType;
+
 typedef struct _FluVaDriversVdpauDriverData FluVaDriversVdpauDriverData;
 
 struct _FluVaDriversVdpauDriverData

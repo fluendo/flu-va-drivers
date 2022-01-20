@@ -682,12 +682,12 @@ flu_va_drivers_vdpau_QueryImageFormats (
       FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP;
 
   *num_formats = 0;
-  while (item->type != FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_NONE) {
+  while (item->type != FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_NONE) {
     VdpStatus vdp_st;
     VdpBool is_format_supported = 0;
 
     switch (item->type) {
-      case FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_YCBCR:
+      case FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR:
         vdp_st =
             impl.vdp_video_surface_query_get_put_bits_y_cb_cr_capabilities (
                 driver_data->vdp_impl.vdp_device, VDP_CHROMA_TYPE_420,

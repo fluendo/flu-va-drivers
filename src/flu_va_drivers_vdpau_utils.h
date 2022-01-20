@@ -5,15 +5,9 @@
 #include <va/va.h>
 #include "flu_va_drivers_vdpau.h"
 
-typedef enum
-{
-  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_YCBCR,
-  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP_ITEM_TYPE_NONE
-} FluVaDriversVdpauImageFormatMapItemType;
-
 struct _FluVaDriversVdpauImageFormatMapItem
 {
-  FluVaDriversVdpauImageFormatMapItemType type;
+  FluVaDriversVdpauImageFormatType type;
   uint32_t vdp_image_format;
   VAImageFormat va_image_format;
 };
