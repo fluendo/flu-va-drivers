@@ -7,12 +7,20 @@
 #include "flu_va_drivers_utils.h"
 #include "flu_va_drivers_vdpau_utils.h"
 
+typedef struct ImagePtr
+{
+  void *planes[3];
+  uint32_t pitches[3];
+} ImagePtr;
+
 static VAStatus flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
     unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID *surfaces, unsigned int num_surfaces,
     VASurfaceAttrib *attrib_list, unsigned int num_attribs);
 static VAStatus set_image_format (FluVaDriversVdpauImageObject *image_obj,
     const VAImageFormat *format, int width, int height);
+static VAStatus get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
+    FluVaDriversVdpauImageObject *image_obj, ImagePtr *ptr);
 
 // clang-format off
 #define _DEFAULT_OFFSET     24
@@ -793,7 +801,87 @@ static VAStatus
 flu_va_drivers_vdpau_GetImage (VADriverContextP ctx, VASurfaceID surface,
     int x, int y, unsigned int width, unsigned int height, VAImageID image)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  FluVaDriversVdpauImageObject *image_obj;
+  ImagePtr img_ptr;
+  VdpStatus vdp_st;
+  VAStatus ret;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, surface);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  image_obj = (FluVaDriversVdpauImageObject *) object_heap_lookup (
+      &driver_data->image_heap, image);
+  if (image_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_IMAGE;
+
+  ret = get_image_ptr (driver_data, image_obj, &img_ptr);
+  if (ret != VA_STATUS_SUCCESS)
+    return ret;
+
+  switch (image_obj->format_type) {
+    case FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR:
+      // This call can only read the full surface
+      if (x != 0 || y != 0 || surface_obj->width != width ||
+          surface_obj->height != height) {
+        return VA_STATUS_ERROR_INVALID_PARAMETER;
+      }
+
+      vdp_st = driver_data->vdp_impl.vdp_video_surface_get_bits_y_cb_cr (
+          surface_obj->vdp_surface, image_obj->vdp_format, img_ptr.planes,
+          img_ptr.pitches);
+      if (vdp_st != VDP_STATUS_OK)
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+      break;
+    default:
+      return VA_STATUS_ERROR_INVALID_IMAGE;
+  }
+
+  return VA_STATUS_SUCCESS;
+}
+
+static VAStatus
+get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
+    FluVaDriversVdpauImageObject *image_obj, ImagePtr *ptr)
+{
+  FluVaDriversVdpauBufferObject *buffer_obj;
+  uint32_t *offsets;
+  uint32_t *pitches;
+  uint8_t *data;
+
+  buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+      &driver_data->buffer_heap, image_obj->va_image.buf);
+  if (buffer_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_BUFFER;
+
+  data = buffer_obj->data;
+  offsets = image_obj->va_image.offsets;
+  pitches = image_obj->va_image.pitches;
+
+  switch (image_obj->va_image.format.fourcc) {
+    case VA_FOURCC_I420:
+      ptr->planes[0] = data + offsets[0];
+      ptr->pitches[0] = pitches[0];
+
+      ptr->planes[1] = data + offsets[2];
+      ptr->pitches[1] = pitches[2];
+
+      ptr->planes[2] = data + offsets[1];
+      ptr->pitches[2] = pitches[1];
+      break;
+    default:
+      for (int i = 0; i < image_obj->va_image.num_planes; i++) {
+        ptr->planes[i] = data + offsets[i];
+        ptr->pitches[i] = pitches[i];
+      }
+      break;
+  }
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
