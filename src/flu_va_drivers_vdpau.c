@@ -11,6 +11,8 @@ static VAStatus flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
     unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID *surfaces, unsigned int num_surfaces,
     VASurfaceAttrib *attrib_list, unsigned int num_attribs);
+static VAStatus set_image_format (FluVaDriversVdpauImageObject *image_obj,
+    const VAImageFormat *format, int width, int height);
 
 // clang-format off
 #define _DEFAULT_OFFSET     24
@@ -388,7 +390,7 @@ flu_va_drivers_vdpau_CreateBuffer (VADriverContextP ctx, VAContextID context,
 
   // Support only num_elements == 1, because this is the use-case of most of
   // the programs, including Chromium that is what we target in this project.
-  if (data == NULL || size == 0 || num_elements != 1)
+  if (size == 0 || num_elements != 1)
     return VA_STATUS_ERROR_INVALID_VALUE;
 
   switch (type) {
@@ -396,6 +398,7 @@ flu_va_drivers_vdpau_CreateBuffer (VADriverContextP ctx, VAContextID context,
     case VAIQMatrixBufferType:
     case VASliceParameterBufferType:
     case VASliceDataBufferType:
+    case VAImageBufferType:
       break;
     default:
       return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
@@ -413,7 +416,11 @@ flu_va_drivers_vdpau_CreateBuffer (VADriverContextP ctx, VAContextID context,
   buffer_obj->size = size;
   buffer_obj->num_elements = num_elements;
   buffer_obj->data = malloc (buffer_obj->size);
-  memcpy (buffer_obj->data, data, buffer_obj->size * buffer_obj->num_elements);
+  assert (buffer_obj->data != NULL);
+  if (data != NULL) {
+    memcpy (
+        buffer_obj->data, data, buffer_obj->size * buffer_obj->num_elements);
+  }
 
   return VA_STATUS_SUCCESS;
 }
@@ -711,7 +718,41 @@ static VAStatus
 flu_va_drivers_vdpau_CreateImage (VADriverContextP ctx, VAImageFormat *format,
     int width, int height, VAImage *image)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauImageObject *image_obj;
+  VAImage *va_image;
+  int image_id;
+  VAStatus ret;
+
+  if ((format == NULL) || (image == NULL))
+    return VA_STATUS_ERROR_INVALID_PARAMETER;
+
+  image_id = object_heap_allocate (&driver_data->image_heap);
+  if (image_id == VA_INVALID_ID)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+
+  image_obj = (FluVaDriversVdpauImageObject *) object_heap_lookup (
+      &driver_data->image_heap, image_id);
+  assert (image_obj != NULL);
+
+  ret = set_image_format (image_obj, format, width, height);
+  if (ret != VA_STATUS_SUCCESS)
+    goto error;
+  va_image = &image_obj->va_image;
+
+  va_image->image_id = image_id;
+
+  ret = flu_va_drivers_vdpau_CreateBuffer (
+      ctx, 0, VAImageBufferType, va_image->data_size, 1, NULL, &va_image->buf);
+  if (ret != VA_STATUS_SUCCESS)
+    goto error;
+
+  *image = *va_image;
+  return VA_STATUS_SUCCESS;
+error:
+  object_heap_free (&driver_data->image_heap, (object_base_p) image_obj);
+  return ret;
 }
 
 static VAStatus
@@ -724,7 +765,20 @@ flu_va_drivers_vdpau_DeriveImage (
 static VAStatus
 flu_va_drivers_vdpau_DestroyImage (VADriverContextP ctx, VAImageID image)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauImageObject *image_obj;
+
+  image_obj = (FluVaDriversVdpauImageObject *) object_heap_lookup (
+      &driver_data->image_heap, image);
+  if (image_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_IMAGE;
+
+  flu_va_drivers_vdpau_DestroyBuffer (ctx, image_obj->va_image.buf);
+
+  object_heap_free (&driver_data->image_heap, (object_base_p) image_obj);
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -947,6 +1001,46 @@ flu_va_drivers_vdpau_CreateSurfaces2 (VADriverContextP ctx,
 }
 
 static VAStatus
+set_image_format (FluVaDriversVdpauImageObject *image_obj,
+    const VAImageFormat *format, int width, int height)
+{
+  unsigned int half_width, half_height, quarter_size, size;
+  VAImage *va_image = &image_obj->va_image;
+  int8_t component_order[4] = { 0 };
+
+  size = width * height;
+  half_width = (width + 1) / 2;
+  half_height = (height + 1) / 2;
+  quarter_size = half_width * half_height;
+
+  switch (format->fourcc) {
+    case VA_FOURCC_NV12:
+      image_obj->format_type = FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR;
+      image_obj->vdp_format = VDP_YCBCR_FORMAT_NV12;
+
+      va_image->num_planes = 2;
+      va_image->pitches[0] = width;
+      va_image->offsets[0] = 0;
+      va_image->pitches[1] = width;
+      va_image->offsets[1] = size;
+      va_image->data_size = size + (2 * quarter_size);
+      va_image->num_palette_entries = 0;
+      va_image->entry_bytes = 0;
+      break;
+    default:
+      return VA_STATUS_ERROR_INVALID_IMAGE_FORMAT;
+  }
+
+  va_image->format = *format;
+  va_image->width = width;
+  va_image->height = height;
+  memcpy (
+      va_image->component_order, component_order, sizeof (component_order));
+
+  return VA_STATUS_SUCCESS;
+}
+
+static VAStatus
 flu_va_drivers_vdpau_QuerySurfaceAttributes (VADriverContextP ctx,
     VAConfigID config, VASurfaceAttrib *attrib_list, unsigned int *num_attribs)
 {
@@ -1110,7 +1204,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
       sizeof (FluVaDriversVdpauSurfaceObject), SURFACE_ID_OFFSET);
   object_heap_init (&driver_data->buffer_heap,
       sizeof (FluVaDriversVdpauBufferObject), BUFFER_ID_OFFSET);
-  object_heap_init (&driver_data->image_heap, heap_sz, IMAGE_ID_OFFSET);
+  object_heap_init (&driver_data->image_heap,
+      sizeof (FluVaDriversVdpauImageObject), IMAGE_ID_OFFSET);
   object_heap_init (&driver_data->subpic_heap, heap_sz, SUBPIC_ID_OFFSET);
 
   return VA_STATUS_SUCCESS;

@@ -106,4 +106,13 @@ struct _FluVaDriversVdpauBufferObject
 };
 typedef struct _FluVaDriversVdpauBufferObject FluVaDriversVdpauBufferObject;
 
+struct _FluVaDriversVdpauImageObject
+{
+  struct object_base base;
+  VAImage va_image;
+  FluVaDriversVdpauImageFormatType format_type;
+  uint32_t vdp_format;
+};
+typedef struct _FluVaDriversVdpauImageObject FluVaDriversVdpauImageObject;
+
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */
