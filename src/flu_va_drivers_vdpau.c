@@ -603,7 +603,26 @@ static VAStatus
 flu_va_drivers_vdpau_SyncSurface (
     VADriverContextP ctx, VASurfaceID render_target)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  FluVaDriversVdpauContextObject *context_obj;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, render_target);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, surface_obj->context_id);
+  if (context_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+  /* Users of VA-API usually call vaSyncSurface after vaEndPicture */
+  assert (context_obj->current_render_target != render_target);
+
+  /* TODO: When vaPutSurface gets implemented, do polling here. */
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -1022,7 +1041,8 @@ static VAStatus
 flu_va_drivers_vdpau_SyncSurface2 (
     VADriverContextP ctx, VASurfaceID surface, uint64_t timeout_ns)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  /* TODO: Use timeout_ns when polling for ready surfaces is added. */
+  return flu_va_drivers_vdpau_SyncSurface (ctx, surface);
 }
 
 static VAStatus
