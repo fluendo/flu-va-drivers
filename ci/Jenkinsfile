@@ -1,7 +1,18 @@
 DEFAULT_NODE = 'docker-fluffgst-ubuntu-bionic'
+DEFAULT_TEST_NODE = "linux-amd-gpu"
+FLUSTER_REPO = 'git@github.com:fluendo/fluster.git'
 
 DRIVERS = [
   'vdpau',
+]
+
+FLUSTER_CONFIG = [
+    'vdpau': [
+        decoder: 'FFmpeg-H.264-VAAPI',
+        ts: 'JVT-AVC_V1',
+        th: 54,
+        tth: 2 * 60
+    ],
 ]
 
 properties([
@@ -63,8 +74,62 @@ node(DEFAULT_NODE) {
             }
         }
 
-        stage('Upload artifacts') {
+        stage('Upload packages') {
+            stash(name: driver, includes: "${outputDirInWS}/*.deb")
             archiveArtifacts(artifacts: "${outputDirInWS}/*.deb", allowEmptyArchive: true, fingerprint: true)
+            sh(label: 'Remove packages', script: 'rm -rf *.deb')
+        }
+
+        node(DEFAULT_TEST_NODE) {
+            def driverName = "flu_va_drivers_${driver}"
+            def logDirInWS = "fluster/logs/${driverName}"
+            def logDir = "${env.WORKSPACE}/${logDirInWS}"
+
+            stage('Test') {
+                def fluster = FLUSTER_CONFIG[driver];
+                fluster.resourcesDir = './resources'
+                fluster.repoDir = './fluster'
+                fluster.mainArgs = '--no-emoji -r ./fluster'
+
+                flusterCloneRepo(fluster.repoDir)
+                flusterDownloadTS(fluster)
+
+                unstash(driver)
+                sh (script: "sudo apt install --reinstall -y ${env.WORKSPACE}/${outputDirInWS}/*.deb", label:"Install ${}")
+                dir(fluster.repoDir) {
+                    def vaapiLogDir = "${logDir}/vaapi"
+
+                    sh(script: "mkdir -p ${logDir} ${vaapiLogDir}", label: 'Create log directory.')
+                    withEnv([
+                        'DISPLAY=:0',
+                        "LIBVA_TRACE=${vaapiLogDir}/vaapi_log",
+                        // FIXME: fluendo-cerbero's flu-va-driver package should install into proper drivers path.
+                        'LIBVA_DRIVERS_PATH=/usr/lib/dri/',
+                        "LIBVA_DRIVER_NAME=${driverName}",
+                    ]) {
+                        def thArg = fluster.th  ? "-th ${fluster.th}" : ""
+                        def tthArg = fluster.tth  ? "-tth ${fluster.tth}" : ""
+
+                        sh(script: 'vainfo', label: 'Run vainfo')
+                        sh(
+                            script: (
+                                "./fluster.py ${fluster.mainArgs} run -t 60 -ts ${fluster.ts} " +
+                                "-d ${fluster.decoder} ${thArg} ${tthArg} -j1 -so ${logDir}/summary.log"),
+                            label: 'Run Fluster'
+                        )
+                    }
+                }
+            }
+
+            def logPackageDirInWS = "${logDirInWS}/logs/archives"
+            def logPackageDir = "${env.WORKSPACE}/${logPackageDirInWS}"
+            def tarballFileName = "${driverName}_logs.tar.gz"
+            sh(script: "mkdir -p ${logPackageDir} && tar -czf ${logPackageDir}/${tarballFileName} ${logDir}",
+                label: 'Compress logs')
+            stage('Upload logs') {
+                archiveArtifacts(artifacts: "${logPackageDirInWS}/${tarballFileName}", allowEmptyArchive: true, fingerprint: true)
+                sh(script: "rm -rf ${logPackageDir}", label: 'Remove log directory.')
+            }
         }
     }
 }
@@ -97,3 +162,16 @@ def getRepoBranch(repo, branchName, defaultBranch = '1.0', required=false) {
 
     return defaultBranch
 }
+
+def flusterCloneRepo(repoDir, flusterBranch = 'master') {
+    sh "rm -rf ${repoDir}"
+    sh(script: "git clone -v --recurse-submodules --depth=1 --shallow-submodules -b ${flusterBranch} ${FLUSTER_REPO} ${repoDir}",
+       label: "Cloning fluster")
+    sh "cd ${repoDir} && git log -1"
+}
+
+def flusterDownloadTS(fluster) {
+    sh "test -d ${fluster.resourcesDir}/${fluster.ts} || (cd ${fluster.repoDir} && ./fluster.py ${fluster.mainArgs} download ${fluster.ts})"
+}
+
+
