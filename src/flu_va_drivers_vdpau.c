@@ -297,6 +297,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
       calloc (num_render_targets, sizeof (VASurfaceID));
   context_obj->num_render_targets = num_render_targets;
   context_obj->vdp_bs_buf = NULL;
+  context_obj->vdp_decoder = VDP_INVALID_HANDLE;
   flu_va_drivers_vdpau_context_object_reset (context_obj);
 
   do {
@@ -333,15 +334,23 @@ flu_va_drivers_vdpau_DestroyContext (VADriverContextP ctx, VAContextID context)
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
-  object_base_p context_obj;
+  FluVaDriversVdpauContextObject *context_obj;
+  VdpStatus vdp_st = VDP_STATUS_OK;
 
-  context_obj = object_heap_lookup (&driver_data->context_heap, context);
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, context);
   if (context_obj == NULL)
     return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  if (context_obj->vdp_decoder != VDP_INVALID_HANDLE)
+    vdp_st =
+        driver_data->vdp_impl.vdp_decoder_destroy (context_obj->vdp_decoder);
 
   flu_va_drivers_vdpau_destroy_context (
       ctx, (FluVaDriversVdpauContextObject *) context_obj);
 
+  if (vdp_st != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_UNKNOWN;
   return VA_STATUS_SUCCESS;
 }
 
@@ -480,7 +489,52 @@ static VAStatus
 flu_va_drivers_vdpau_RenderPicture (VADriverContextP ctx, VAContextID context,
     VABufferID *buffers, int num_buffers)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauContextObject *context_obj;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  int i;
+
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, context);
+  if (context_obj == NULL ||
+      context_obj->current_render_target == VA_INVALID_ID)
+    return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, context_obj->current_render_target);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+  assert (surface_obj->context_id == context);
+
+  for (i = 0; i < num_buffers; i++) {
+    FluVaDriversVdpauBufferObject *buffer_obj;
+
+    buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+        &driver_data->buffer_heap, buffers[i]);
+    if (buffer_obj == NULL ||
+        !flu_va_driver_vdpau_is_buffer_type_supported (buffer_obj->type))
+      return VA_STATUS_ERROR_INVALID_BUFFER;
+  }
+
+  for (i = 0; i < num_buffers; i++) {
+    FluVaDriversVdpauBufferObject *buffer_obj;
+
+    buffer_obj = (FluVaDriversVdpauBufferObject *) object_heap_lookup (
+        &driver_data->buffer_heap, buffers[i]);
+    assert (buffer_obj != NULL);
+
+    if (flu_va_driver_vdpau_translate_buffer_h264 (
+            ctx, context_obj, buffer_obj) != VA_STATUS_SUCCESS)
+      goto translation_error;
+  }
+
+  return VA_STATUS_SUCCESS;
+
+translation_error:
+  /* TODO: Execute pending delayed buffer destroy */
+  flu_va_drivers_vdpau_context_object_reset (context_obj);
+  return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 }
 
 static VAStatus
@@ -489,15 +543,60 @@ flu_va_drivers_vdpau_EndPicture (VADriverContextP ctx, VAContextID context)
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
   FluVaDriversVdpauContextObject *context_obj;
+  FluVaDriversVdpauConfigObject *config_obj;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  VdpDecoderProfile vdp_profile;
+  VdpStatus vdp_st;
+  VAStatus ret;
 
   context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
       &driver_data->context_heap, context);
   if (context_obj == NULL)
     return VA_STATUS_ERROR_INVALID_CONTEXT;
 
-  flu_va_drivers_vdpau_context_object_reset (context_obj);
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, context_obj->config_id);
+  if (config_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
 
-  return VA_STATUS_SUCCESS;
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, context_obj->current_render_target);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  if (flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
+          config_obj->profile, &vdp_profile) != VA_STATUS_SUCCESS)
+    return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+
+  // FIXME: Using 16 as a temporary max_ref_frames, but may lead into
+  // waste of memory.
+  if (context_obj->vdp_decoder == VDP_INVALID_HANDLE) {
+    vdp_st = driver_data->vdp_impl.vdp_decoder_create (
+        driver_data->vdp_impl.vdp_device, vdp_profile,
+        context_obj->picture_width, context_obj->picture_height, 16,
+        &context_obj->vdp_decoder);
+
+    if (vdp_st != VDP_STATUS_OK) {
+      context_obj->vdp_decoder = VDP_INVALID_HANDLE;
+      ret = VA_STATUS_ERROR_UNKNOWN;
+      goto beach;
+    }
+  }
+
+  /* TODO: Check validity of VdpPictureInfo? */
+  vdp_st = driver_data->vdp_impl.vdp_decoder_render (context_obj->vdp_decoder,
+      surface_obj->vdp_surface, (VdpPictureInfo *) &context_obj->vdp_pic_info,
+      context_obj->num_vdp_bs_buf, context_obj->vdp_bs_buf);
+
+  if (vdp_st != VDP_STATUS_OK) {
+    ret = VA_STATUS_ERROR_DECODING_ERROR;
+    goto beach;
+  }
+
+  ret = VA_STATUS_SUCCESS;
+beach:
+  flu_va_drivers_vdpau_context_object_reset (context_obj);
+  return ret;
 }
 
 static VAStatus
