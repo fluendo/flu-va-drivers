@@ -208,7 +208,29 @@ flu_va_drivers_vdpau_QueryConfigAttributes (VADriverContextP ctx,
     VAConfigID config_id, VAProfile *profile, VAEntrypoint *entrypoint,
     VAConfigAttrib *attrib_list, int *num_attribs)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauConfigObject *config_obj;
+
+  config_obj = (FluVaDriversVdpauConfigObject *) object_heap_lookup (
+      &driver_data->config_heap, config_id);
+  if (config_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONFIG;
+
+  if (profile != NULL)
+    *profile = config_obj->profile;
+
+  if (entrypoint != NULL)
+    *entrypoint = config_obj->entrypoint;
+
+  if (num_attribs != NULL)
+    *num_attribs = config_obj->num_attribs;
+
+  if (attrib_list != NULL)
+    memcpy (attrib_list, config_obj->attrib_list,
+        config_obj->num_attribs * sizeof (*attrib_list));
+
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
