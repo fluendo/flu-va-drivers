@@ -28,6 +28,12 @@
 static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
 static const uint8_t NALU_START_CODE_4[4] = { 0x00, 0x00, 0x0, 0x01 };
 
+typedef enum
+{
+  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR,
+  FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_NONE
+} FluVaDriversVdpauImageFormatType;
+
 typedef struct _FluVaDriversVdpauDriverData FluVaDriversVdpauDriverData;
 
 struct _FluVaDriversVdpauDriverData
@@ -99,5 +105,14 @@ struct _FluVaDriversVdpauBufferObject
   unsigned int num_elements;
 };
 typedef struct _FluVaDriversVdpauBufferObject FluVaDriversVdpauBufferObject;
+
+struct _FluVaDriversVdpauImageObject
+{
+  struct object_base base;
+  VAImage va_image;
+  FluVaDriversVdpauImageFormatType format_type;
+  uint32_t vdp_format;
+};
+typedef struct _FluVaDriversVdpauImageObject FluVaDriversVdpauImageObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */
