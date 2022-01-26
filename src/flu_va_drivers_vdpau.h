@@ -23,6 +23,7 @@
 // This has been forced to 1 to make va_openDriver to pass.
 #define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        1
 #define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
+#define FLU_VA_DRIVERS_VDPAU_MAX_MIXER_SURFACES        3
 // clang-format on
 
 static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
@@ -47,6 +48,7 @@ struct _FluVaDriversVdpauDriverData
   struct object_heap buffer_heap;
   struct object_heap image_heap;
   struct object_heap subpic_heap;
+  struct object_heap mixer_heap;
 
   char _reserved[16];
 };
@@ -65,6 +67,18 @@ struct _FluVaDriversVdpauConfigObject
 };
 typedef struct _FluVaDriversVdpauConfigObject FluVaDriversVdpauConfigObject;
 
+struct _FluVaDriversVdpauMixerObject
+{
+  struct object_base base;
+  unsigned int refcnt;
+  unsigned int chroma_type;
+  unsigned int width;
+  unsigned int height;
+  VdpVideoMixer mixer;
+  VdpVideoSurface surfaces[FLU_VA_DRIVERS_VDPAU_MAX_MIXER_SURFACES];
+};
+typedef struct _FluVaDriversVdpauMixerObject FluVaDriversVdpauMixerObject;
+
 struct _FluVaDriversVdpauSurfaceObject
 {
   struct object_base base;
@@ -73,6 +87,7 @@ struct _FluVaDriversVdpauSurfaceObject
   unsigned int width;
   unsigned int height;
   VdpVideoSurface vdp_surface;
+  FluVaDriversVdpauMixerObject *mixer;
 };
 typedef struct _FluVaDriversVdpauSurfaceObject FluVaDriversVdpauSurfaceObject;
 

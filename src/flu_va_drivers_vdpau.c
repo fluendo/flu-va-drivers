@@ -1,5 +1,6 @@
 #include <va/va.h>
 #include <vdpau/vdpau.h>
+#include <X11/Xutil.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -21,6 +22,9 @@ static VAStatus set_image_format (FluVaDriversVdpauImageObject *image_obj,
     const VAImageFormat *format, int width, int height);
 static VAStatus get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
     FluVaDriversVdpauImageObject *image_obj, ImagePtr *ptr);
+static VAStatus
+init_surface_mixer (FluVaDriversVdpauDriverData *driver_data,
+    FluVaDriversVdpauSurfaceObject *surface);
 
 // clang-format off
 #define _DEFAULT_OFFSET     24
@@ -30,6 +34,7 @@ static VAStatus get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
 #define BUFFER_ID_OFFSET    4 << _DEFAULT_OFFSET
 #define IMAGE_ID_OFFSET     5 << _DEFAULT_OFFSET
 #define SUBPIC_ID_OFFSET    6 << _DEFAULT_OFFSET
+#define MIXER_ID_OFFSET     7 << _DEFAULT_OFFSET
 // clang-format on
 
 static VAStatus
@@ -44,6 +49,7 @@ flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
   object_heap_terminate (&driver_data->buffer_heap);
   object_heap_terminate (&driver_data->image_heap);
   object_heap_terminate (&driver_data->subpic_heap);
+  object_heap_terminate (&driver_data->mixer_heap);
 
   free (driver_data);
 
@@ -683,6 +689,69 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
     unsigned short desth, VARectangle *cliprects,
     unsigned int number_cliprects, unsigned int flags)
 {
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauVdpDeviceImpl impl = driver_data->vdp_impl;
+  VdpVideoMixerPictureStructure picture_structure;
+  unsigned int width, height, border_width, depth;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  Window win;
+  Status st;
+  int x, y;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, surface);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+  if (!surface_obj->mixer)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  /* TODO: support cliprects */
+  if (cliprects || number_cliprects > 0)
+    return VA_STATUS_ERROR_INVALID_PARAMETER;
+
+  st = XGetGeometry(ctx->native_dpy, (Drawable)draw, &win, &x, &y, &width, &height,
+      &border_width, &depth);
+  if (st == 0)
+    return VA_STATUS_ERROR_OPERATION_FAILED;
+
+  // TODO: A lot of checkings :)
+
+  switch (flags & (VA_TOP_FIELD|VA_BOTTOM_FIELD)) {
+    case VA_TOP_FIELD:
+      picture_structure = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_TOP_FIELD;
+      break;
+    case VA_BOTTOM_FIELD:
+      picture_structure = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_BOTTOM_FIELD;
+      break;
+    default:
+      picture_structure = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME;
+      break;
+  }
+
+  // Render
+  /*
+  impl.vdp_video_mixer_render (
+    surface->mixer,
+    VDP_INVALID_HANDLE, // bg_surface  Try without bg first
+    NULL,               // background_source_rect
+    picture_structure,
+    uint32_t                      video_surface_past_count,
+    VdpVideoSurface const *       video_surface_past,
+    VdpVideoSurface               video_surface_current,
+    uint32_t                      video_surface_future_count,
+    VdpVideoSurface const *       video_surface_future,
+    VdpRect const *               video_source_rect,
+    VdpOutputSurface              destination_surface,
+    VdpRect const *               destination_rect,
+    VdpRect const *               destination_video_rect,
+    uint32_t                      layer_count,
+    VdpLayer const *              layers
+  );
+  */
+
+  // Queue / Display
+
   return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
@@ -884,6 +953,78 @@ get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
   return VA_STATUS_SUCCESS;
 }
 
+/* Find or creates a new mixer that fits the surface's characteristics */
+static VAStatus
+init_surface_mixer (FluVaDriversVdpauDriverData *driver_data,
+    FluVaDriversVdpauSurfaceObject *surface)
+{
+  FluVaDriversVdpauMixerObject *mixer_obj;
+  object_heap_iterator iter;
+  object_base_p next;
+  VdpStatus vdp_st;
+  int mixer_obj_id;
+
+  surface->mixer = NULL;
+
+  // Rescue an already created mixer valid for the surface
+  next = object_heap_first (&driver_data->mixer_heap, &iter);
+  while (next) {
+    mixer_obj = (FluVaDriversVdpauMixerObject *) next;
+    if (mixer_obj->width == surface->width &&
+        mixer_obj->height == surface->height)
+    {
+      mixer_obj->refcnt++;
+      surface->mixer = mixer_obj;
+      return VA_STATUS_SUCCESS;
+    }
+    next = object_heap_next (&driver_data->mixer_heap, &iter);
+  }
+
+  // There was no luck so create a new one
+  mixer_obj_id = object_heap_allocate (&driver_data->mixer_heap);
+  if (mixer_obj_id == -1)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  mixer_obj = (FluVaDriversVdpauMixerObject *) object_heap_lookup (
+      &driver_data->mixer_heap, mixer_obj_id);
+  assert (mixer_obj != NULL);
+
+  mixer_obj->width = surface->width;
+  mixer_obj->height = surface->height;
+  mixer_obj->chroma_type = VDP_CHROMA_TYPE_420; // Only support this type by now
+
+  // TODO: Set desired features
+
+  static const VdpVideoMixerParameter params[] = {
+    VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_WIDTH,
+    VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_HEIGHT,
+    VDP_VIDEO_MIXER_PARAMETER_CHROMA_TYPE,
+  };
+  const void *const param_values[] = {
+    &mixer_obj->width,
+    &mixer_obj->height,
+    &mixer_obj->chroma_type,
+  };
+
+  vdp_st = driver_data->vdp_impl.vdp_video_mixer_create (
+      driver_data->vdp_impl.vdp_device,
+      0,    // num_features
+      NULL, // features
+      sizeof (params) / sizeof (*params),
+      params,
+      param_values,
+      &mixer_obj->mixer
+  );
+  if (vdp_st != VDP_STATUS_OK)
+    goto error;
+
+  mixer_obj->refcnt = 1;
+  surface->mixer = mixer_obj;
+  return VA_STATUS_SUCCESS;
+error:
+  object_heap_free (&driver_data->mixer_heap, (object_base_p) mixer_obj);
+  return VA_STATUS_ERROR_OPERATION_FAILED;
+}
+
 static VAStatus
 flu_va_drivers_vdpau_PutImage (VADriverContextP ctx, VASurfaceID surface,
     VAImageID image, int src_x, int src_y, unsigned int src_width,
@@ -971,7 +1112,7 @@ static VAStatus
 flu_va_drivers_vdpau_SetDisplayAttributes (
     VADriverContextP ctx, VADisplayAttribute *attr_list, int num_attributes)
 {
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -1052,7 +1193,7 @@ flu_va_drivers_vdpau_create_surface (VADriverContextP ctx, int width,
   surface_obj->height = height;
   surface_obj->vdp_surface = vdp_surface;
 
-  return VA_STATUS_SUCCESS;
+  return init_surface_mixer (driver_data, surface_obj);
 }
 
 static VAStatus
@@ -1276,6 +1417,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
   if (ctx->display_type != VA_DISPLAY_X11)
     return VA_STATUS_ERROR_INVALID_DISPLAY;
 
+  const char * const dpy_name = XDisplayString(ctx->native_dpy);
+  ctx->native_dpy = XOpenDisplay(dpy_name);
   if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen, &device,
           &get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
@@ -1295,6 +1438,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
   object_heap_init (&driver_data->image_heap,
       sizeof (FluVaDriversVdpauImageObject), IMAGE_ID_OFFSET);
   object_heap_init (&driver_data->subpic_heap, heap_sz, SUBPIC_ID_OFFSET);
+  object_heap_init (&driver_data->mixer_heap,
+      sizeof (FluVaDriversVdpauMixerObject), MIXER_ID_OFFSET);
 
   return VA_STATUS_SUCCESS;
 }

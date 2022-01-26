@@ -1,0 +1,81 @@
+vdpau_PutSurface
+	x11_get_geometry
+	put_surface
+		output_surface_ensure
+			[output_surface_create]
+				vdpau_presentation_queue_target_create_x11
+				vdpau_presentation_queue_create
+				[output_surface_destroy]
+					vdpau_presentation_queue_destroy
+					vdpau_presentation_queue_target_destroy
+		[*queue_surface_unlocked*]
+		output_surface_ensure_size
+			[vdpau_output_surface_destroy]
+			[vdpau_output_surface_create]
+		put_surface_unlocked
+			vdpau_presentation_queue_block_until_surface_idle
+			render_surface
+				<checks>
+				video_mixer_render
+					video_mixer_update_csc_matrix
+					video_mixer_update_background_color
+					video_mixer_update_scaling
+					video_mixer_push_deint_surface
+					vdpau_video_mixer_render
+					video_mixer_push_deint_surface
+			render_subpictures
+				render_subpicture
+					commit_subpicture
+						<checks>
+						[vdpau_bitmap_surface_put_bits_native]
+						[vdpau_output_surface_put_bits_indexed]
+					<checks>
+					[vdpau_output_surface_render_bitmap_surface]
+					[vdpau_output_surface_render_output_surface]
+			[*queue_surface_unlocked*]
+
+
+*queue_surface_unlocked*
+	flip_surface_unlocked
+		vdpau_presentation_queue_display
+
+
+VDPAU FUNC
+	vdpau_presentation_queue_target_create_x11
+	vdpau_presentation_queue_create
+	vdpau_presentation_queue_block_until_surface_idle
+	vdpau_presentation_queue_display
+	vdpau_presentation_queue_destroy
+	vdpau_presentation_queue_target_destroy
+
+	vdpau_output_surface_create
+	vdpau_output_surface_destroy
+
+	vdpau_bitmap_surface_put_bits_native
+	vdpau_output_surface_put_bits_indexed
+
+	vdpau_video_mixer_render
+	vdpau_output_surface_render_bitmap_surface
+	vdpau_output_surface_render_output_surface
+
+
+OBJECTS
+
+object_surface
+	VdpVideoSurface vdp_surface
+	object_output output_surfaces[]
+		VdpOutputSurface output_surfaces[]
+
+
+
+VdpVideoSurface[] --> VdpVideoMixer --> VdpOutputSurface --> VdpPresentationQueue --> X11 Window
+
+
+                                       [Used to render]-.   .----1-> Drawable
+                                                        |   +----1-> VdpPresentationQueue
+                                                        v   v 1
+VdpVideoSurface <-1----1-> object_surface <-N----M-> object_output <-1----2-> VdpOutputSurface
+        ^ 3                       ^ N                  [shared]
+        |          [shared]       |
+        '----1-> object_mixer <-1-'
+                       ^------------[Used to create VdpOutputSurface]
