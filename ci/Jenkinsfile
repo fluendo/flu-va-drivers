@@ -1,6 +1,8 @@
 DEFAULT_NODE = 'docker-fluffgst-ubuntu-bionic'
 DEFAULT_TEST_NODE = "linux-amd-gpu"
 FLUSTER_REPO = 'git@github.com:fluendo/fluster.git'
+DEFAULT_LIBVA_BRANCH = '2.10.0'
+
 
 DRIVERS = [
   'vdpau',
@@ -84,8 +86,19 @@ node(DEFAULT_NODE) {
             def driverName = "flu_va_drivers_${driver}"
             def logDirInWS = "fluster/logs/${driverName}"
             def logDir = "${env.WORKSPACE}/${logDirInWS}"
+            def libvaPrefix = "${env.WORKSPACE}/libva_prefix"
 
             stage('Test') {
+                // Setup libva
+                dir('libva') {
+                    deleteDir()
+                    sh(script: "git clone https://github.com/intel/libva -b ${DEFAULT_LIBVA_BRANCH} .",
+                        label: 'Clone libva')
+                    sh("mkdir -p ${libvaPrefix} && meson --prefix=${libvaPrefix} builddir")
+                    sh(script: 'ninja -C builddir install', label: 'Build libva')
+                }
+
+                // Setup Fluster
                 def fluster = FLUSTER_CONFIG[driver];
                 fluster.resourcesDir = './resources'
                 fluster.repoDir = './fluster'
@@ -102,6 +115,7 @@ node(DEFAULT_NODE) {
                     sh(script: "mkdir -p ${logDir} ${vaapiLogDir}", label: 'Create log directory.')
                     withEnv([
                         'DISPLAY=:0',
+                        "LD_LIBRARY_PATH=${libvaPrefix}/lib/x86_64-linux-gnu",
                         "LIBVA_TRACE=${vaapiLogDir}/vaapi_log",
                         // FIXME: fluendo-cerbero's flu-va-driver package should install into proper drivers path.
                         'LIBVA_DRIVERS_PATH=/usr/lib/dri/',
