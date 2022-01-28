@@ -47,6 +47,7 @@ struct _FluVaDriversVdpauDriverData
   struct object_heap buffer_heap;
   struct object_heap image_heap;
   struct object_heap subpic_heap;
+  struct object_heap video_mixer_heap;
 
   char _reserved[16];
 };
@@ -80,6 +81,7 @@ struct _FluVaDriversVdpauContextObject
 {
   struct object_base base;
   VAConfigID config_id;
+  int video_mixer_id;
   VdpDecoder vdp_decoder;
   unsigned int flag;
   int picture_width;
@@ -114,5 +116,17 @@ struct _FluVaDriversVdpauImageObject
   uint32_t vdp_format;
 };
 typedef struct _FluVaDriversVdpauImageObject FluVaDriversVdpauImageObject;
+
+struct _FluVaDriversVdpauVideoMixerObject
+{
+  struct object_base base;
+  VAContextID context_id;
+  VdpVideoMixer vdp_video_mixer;
+  VdpChromaType vdp_chroma_type;
+  unsigned int width;
+  unsigned int height;
+};
+typedef struct _FluVaDriversVdpauVideoMixerObject
+    FluVaDriversVdpauVideoMixerObject;
 
 #endif /* __FLU_VA_DRIVERS_VDPAU_DRV_VIDEO_H__ */

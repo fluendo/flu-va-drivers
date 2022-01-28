@@ -6,6 +6,7 @@
 #include "flu_va_drivers_vdpau.h"
 #include "flu_va_drivers_utils.h"
 #include "flu_va_drivers_vdpau_utils.h"
+#include "flu_va_drivers_vdpau_x11.h"
 
 typedef struct ImagePtr
 {
@@ -30,6 +31,7 @@ static VAStatus get_image_ptr (FluVaDriversVdpauDriverData *driver_data,
 #define BUFFER_ID_OFFSET    4 << _DEFAULT_OFFSET
 #define IMAGE_ID_OFFSET     5 << _DEFAULT_OFFSET
 #define SUBPIC_ID_OFFSET    6 << _DEFAULT_OFFSET
+#define VIDEO_MIXER_ID_OFFSET 7 << _DEFAULT_OFFSET
 // clang-format on
 
 static VAStatus
@@ -283,15 +285,36 @@ flu_va_drivers_vdpau_DestroySurfaces (
   return ret;
 }
 
-static void
+static VAStatus
 flu_va_drivers_vdpau_destroy_context (
     VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+  VdpStatus vdp_st;
+  FluVaDriversVdpauVideoMixerObject *video_mixer_obj;
+
+  if (context_obj->vdp_decoder != VDP_INVALID_HANDLE)
+    vdp_st = driver_data->vdp_impl.vdp_decoder_destroy (
+                 context_obj->vdp_decoder) == VDP_STATUS_OK;
+
+  if (vdp_st != VDP_STATUS_OK)
+    va_st = VA_STATUS_ERROR_UNKNOWN;
+
+  video_mixer_obj = (FluVaDriversVdpauVideoMixerObject *) object_heap_lookup (
+      &driver_data->video_mixer_heap, context_obj->video_mixer_id);
+  if (video_mixer_obj) {
+    VAStatus destroy_st =
+        flu_va_drivers_vdpau_destroy_video_mixer (ctx, video_mixer_obj);
+    if (va_st == VA_STATUS_SUCCESS)
+      va_st = destroy_st;
+  }
 
   free (context_obj->render_targets);
   object_heap_free (&driver_data->context_heap, (object_base_p) context_obj);
+
+  return va_st;
 }
 
 static VAStatus
@@ -330,6 +353,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->num_render_targets = num_render_targets;
   context_obj->vdp_bs_buf = NULL;
   context_obj->vdp_decoder = VDP_INVALID_HANDLE;
+  context_obj->video_mixer_id = FLU_VA_DRIVERS_INVALID_ID;
   flu_va_drivers_vdpau_context_object_reset (context_obj);
 
   do {
@@ -367,23 +391,14 @@ flu_va_drivers_vdpau_DestroyContext (VADriverContextP ctx, VAContextID context)
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
   FluVaDriversVdpauContextObject *context_obj;
-  VdpStatus vdp_st = VDP_STATUS_OK;
 
   context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
       &driver_data->context_heap, context);
   if (context_obj == NULL)
     return VA_STATUS_ERROR_INVALID_CONFIG;
 
-  if (context_obj->vdp_decoder != VDP_INVALID_HANDLE)
-    vdp_st =
-        driver_data->vdp_impl.vdp_decoder_destroy (context_obj->vdp_decoder);
-
-  flu_va_drivers_vdpau_destroy_context (
+  return flu_va_drivers_vdpau_destroy_context (
       ctx, (FluVaDriversVdpauContextObject *) context_obj);
-
-  if (vdp_st != VDP_STATUS_OK)
-    return VA_STATUS_ERROR_UNKNOWN;
-  return VA_STATUS_SUCCESS;
 }
 
 static VAStatus
@@ -683,6 +698,27 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
     unsigned short desth, VARectangle *cliprects,
     unsigned int number_cliprects, unsigned int flags)
 {
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  FluVaDriversVdpauContextObject *context_obj;
+  FluVaDriversVdpauSurfaceObject *surface_obj;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+
+  surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
+      &driver_data->surface_heap, surface);
+  if (surface_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_SURFACE;
+
+  context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
+      &driver_data->context_heap, surface_obj->context_id);
+  if (context_obj == NULL)
+    return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+  va_st = flu_va_drivers_vdpau_context_ensure_video_mixer (ctx, context_obj,
+      surface_obj->width, surface_obj->height, surface_obj->format);
+  if (va_st != VA_STATUS_SUCCESS)
+    return va_st;
+
   return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
@@ -1294,6 +1330,8 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
       sizeof (FluVaDriversVdpauBufferObject), BUFFER_ID_OFFSET);
   object_heap_init (&driver_data->image_heap,
       sizeof (FluVaDriversVdpauImageObject), IMAGE_ID_OFFSET);
+  object_heap_init (&driver_data->video_mixer_heap,
+      sizeof (FluVaDriversVdpauVideoMixerObject), VIDEO_MIXER_ID_OFFSET);
   object_heap_init (&driver_data->subpic_heap, heap_sz, SUBPIC_ID_OFFSET);
 
   return VA_STATUS_SUCCESS;

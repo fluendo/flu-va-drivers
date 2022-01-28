@@ -22,6 +22,9 @@ extern FluVaDriversVdpauImageFormatMap FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_MAP;
 VAStatus flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
     VAProfile va_profile, VdpDecoderProfile *vdp_profile);
 
+VAStatus flu_va_drivers_map_va_rt_format_to_vdp_chroma_type (
+    int va_rt_format, VdpChromaType *vdp_chroma_type);
+
 int flu_va_drivers_vdpau_is_profile_supported (VAProfile va_profile);
 
 int flu_va_drivers_vdpau_is_entrypoint_supported (VAEntrypoint va_entrypoint);

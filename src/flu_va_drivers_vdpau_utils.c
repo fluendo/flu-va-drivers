@@ -34,6 +34,21 @@ flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
   return ret;
 }
 
+VAStatus
+flu_va_drivers_map_va_rt_format_to_vdp_chroma_type (
+    int va_rt_format, VdpChromaType *vdp_chroma_type)
+{
+  VAStatus ret = VA_STATUS_SUCCESS;
+  switch (va_rt_format) {
+    case VA_RT_FORMAT_YUV420:
+      *vdp_chroma_type = VDP_CHROMA_TYPE_420;
+      break;
+    default:
+      ret = VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+  }
+
+  return ret;
+}
 VAConfigAttrib *
 flu_va_drivers_vdpau_lookup_config_attrib_type (VAConfigAttrib *attrib_list,
     int num_attribs, VAConfigAttribType attrib_type)
