@@ -25,6 +25,12 @@ VAStatus flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
 VAStatus flu_va_drivers_map_va_rt_format_to_vdp_chroma_type (
     int va_rt_format, VdpChromaType *vdp_chroma_type);
 
+VAStatus flu_va_drivers_map_va_flag_to_vdp_video_mixer_picture_structure (
+    int va_flag, VdpVideoMixerPictureStructure *vdp_flag);
+
+void flu_va_drivers_map_va_rectangle_to_vdp_rect (
+    const VARectangle *va_rect, VdpRect *vdp_rect);
+
 int flu_va_drivers_vdpau_is_profile_supported (VAProfile va_profile);
 
 int flu_va_drivers_vdpau_is_entrypoint_supported (VAEntrypoint va_entrypoint);

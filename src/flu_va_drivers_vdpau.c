@@ -366,6 +366,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->video_mixer_id = FLU_VA_DRIVERS_INVALID_ID;
   context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
   context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+  context_obj->vdp_output_surface_idx = 0;
   flu_va_drivers_vdpau_context_clear_output_surfaces (context_obj);
 
   flu_va_drivers_vdpau_context_object_reset (context_obj);
@@ -717,9 +718,21 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
   FluVaDriversVdpauContextObject *context_obj;
   FluVaDriversVdpauSurfaceObject *surface_obj;
   VAStatus va_st = VA_STATUS_SUCCESS;
+  VdpVideoMixerPictureStructure vdp_field;
   Window win;
   unsigned int width, height, border_width, depth;
   int x, y;
+  VARectangle dst_rect = {
+    .x = destx, .y = desty, .width = destw, .height = desth
+  };
+
+  va_st = flu_va_drivers_map_va_flag_to_vdp_video_mixer_picture_structure (
+      flags, &vdp_field);
+  if (va_st != VA_STATUS_SUCCESS)
+    return va_st;
+
+  if (vdp_field != VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME)
+    return VA_STATUS_ERROR_FLAG_NOT_SUPPORTED;
 
   surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
       &driver_data->surface_heap, surface);
@@ -750,7 +763,8 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 
-  return VA_STATUS_ERROR_UNIMPLEMENTED;
+  return flu_va_drivers_vdpau_render (ctx, context_obj, surface_obj,
+      (Drawable) draw, width, height, &dst_rect, vdp_field);
 }
 
 static VAStatus

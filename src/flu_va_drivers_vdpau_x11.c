@@ -251,3 +251,85 @@ flu_va_drivers_vdpau_context_ensure_output_surfaces (VADriverContextP ctx,
   return flu_va_drivers_vdpau_context_init_output_surfaces (
       ctx, context_obj, width, height);
 }
+
+static VAStatus
+flu_va_drivers_vdpau_wait_on_current_output_surface (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VdpOutputSurface vdp_output_surface =
+      context_obj->vdp_output_surfaces[context_obj->vdp_output_surface_idx];
+  VdpStatus vdp_st;
+  VdpTime unused;
+
+  assert (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE);
+  assert (vdp_output_surface != VDP_INVALID_HANDLE);
+
+  vdp_st =
+      driver_data->vdp_impl.vdp_presentation_queue_block_until_surface_idle (
+          context_obj->vdp_presentation_queue, vdp_output_surface, &unused);
+
+  if (vdp_st != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
+  return VA_STATUS_SUCCESS;
+}
+
+VAStatus
+flu_va_drivers_vdpau_render (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    FluVaDriversVdpauSurfaceObject *surface_obj, Drawable draw,
+    unsigned int draw_width, unsigned int draw_height,
+    const VARectangle *dst_rect, VdpVideoMixerPictureStructure vdp_field)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VdpOutputSurface vdp_output_surface =
+      context_obj->vdp_output_surfaces[context_obj->vdp_output_surface_idx];
+  FluVaDriversVdpauVideoMixerObject *video_mixer_obj;
+  VAStatus va_st;
+  VdpStatus vdp_st;
+  VdpRect vdp_src_rect, vdp_dst_rect;
+
+  va_st =
+      flu_va_drivers_vdpau_wait_on_current_output_surface (ctx, context_obj);
+  if (va_st != VA_STATUS_SUCCESS)
+    return va_st;
+
+  video_mixer_obj = (FluVaDriversVdpauVideoMixerObject *) object_heap_lookup (
+      &driver_data->video_mixer_heap, context_obj->video_mixer_id);
+  assert (video_mixer_obj != NULL &&
+          video_mixer_obj->vdp_video_mixer != VDP_INVALID_HANDLE);
+
+  flu_va_drivers_map_va_rectangle_to_vdp_rect (dst_rect, &vdp_dst_rect);
+  vdp_st = driver_data->vdp_impl.vdp_video_mixer_render (
+      video_mixer_obj->vdp_video_mixer,
+      /* background */
+      VDP_INVALID_HANDLE, NULL,
+      /* progressive (full-frame), top field or bottom field */
+      vdp_field,
+      /* past */
+      0, NULL,
+      /* current */
+      surface_obj->vdp_surface,
+      /* future */
+      0, NULL, &vdp_src_rect,
+      /* destination */
+      vdp_output_surface, NULL, &vdp_dst_rect,
+      /* layers */
+      0, NULL);
+  if (vdp_st != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
+
+  vdp_st = driver_data->vdp_impl.vdp_presentation_queue_display (
+      context_obj->vdp_presentation_queue, vdp_output_surface, draw_width,
+      draw_height, 0);
+  if (vdp_st != VDP_STATUS_OK)
+    return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
+
+  context_obj->vdp_output_surface_idx =
+      (context_obj->vdp_output_surface_idx + 1) %
+      FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES;
+
+  return VA_STATUS_SUCCESS;
+}

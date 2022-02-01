@@ -86,6 +86,7 @@ struct _FluVaDriversVdpauContextObject
   VdpDecoder vdp_decoder;
   VdpOutputSurface
       vdp_output_surfaces[FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES];
+  unsigned int vdp_output_surface_idx;
   VdpPresentationQueue vdp_presentation_queue;
   VdpPresentationQueueTarget vdp_presentation_queue_target;
   unsigned int flag;

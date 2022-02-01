@@ -40,4 +40,10 @@ VAStatus flu_va_drivers_vdpau_context_ensure_output_surfaces (
     VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
     unsigned int width, unsigned int height);
 
+VAStatus flu_va_drivers_vdpau_render (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    FluVaDriversVdpauSurfaceObject *surface_obj, Drawable draw,
+    unsigned int draw_width, unsigned int draw_height,
+    const VARectangle *dst_rect, VdpVideoMixerPictureStructure vdp_field);
+
 #endif // __FLU_VA_DRIVERS_VDPAU_X11_H__
