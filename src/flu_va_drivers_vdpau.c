@@ -315,6 +315,12 @@ flu_va_drivers_vdpau_destroy_context (
   if (ret == VA_STATUS_SUCCESS)
     ret = va_st;
 
+  va_st = flu_va_drivers_vdpau_destroy_output_surfaces (ctx, context_obj,
+      context_obj->vdp_output_surfaces,
+      FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES);
+  if (ret == VA_STATUS_SUCCESS)
+    ret = va_st;
+
   free (context_obj->render_targets);
   object_heap_free (&driver_data->context_heap, (object_base_p) context_obj);
 
@@ -360,6 +366,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->video_mixer_id = FLU_VA_DRIVERS_INVALID_ID;
   context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
   context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+  flu_va_drivers_vdpau_context_clear_output_surfaces (context_obj);
 
   flu_va_drivers_vdpau_context_object_reset (context_obj);
 
@@ -710,6 +717,9 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
   FluVaDriversVdpauContextObject *context_obj;
   FluVaDriversVdpauSurfaceObject *surface_obj;
   VAStatus va_st = VA_STATUS_SUCCESS;
+  Window win;
+  unsigned int width, height, border_width, depth;
+  int x, y;
 
   surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
       &driver_data->surface_heap, surface);
@@ -728,6 +738,15 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
 
   va_st = flu_va_drivers_vdpau_context_ensure_presentation_queue (
       ctx, context_obj, (Drawable) draw);
+  if (va_st != VA_STATUS_SUCCESS)
+    return va_st;
+
+  if (!XGetGeometry (ctx->native_dpy, (Drawable) draw, &win, &x, &y, &width,
+          &height, &border_width, &depth))
+    return VA_STATUS_ERROR_UNKNOWN;
+
+  va_st = flu_va_drivers_vdpau_context_ensure_output_surfaces (
+      ctx, context_obj, width, height);
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 

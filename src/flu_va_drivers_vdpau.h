@@ -23,6 +23,7 @@
 // This has been forced to 1 to make va_openDriver to pass.
 #define FLU_VA_DRIVERS_VDPAU_MAX_SUBPIC_FORMATS        1
 #define FLU_VA_DRIVERS_VDPAU_MAX_DISPLAY_ATTRIBUTES    0
+#define FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES       3
 // clang-format on
 
 static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
@@ -83,6 +84,8 @@ struct _FluVaDriversVdpauContextObject
   VAConfigID config_id;
   int video_mixer_id;
   VdpDecoder vdp_decoder;
+  VdpOutputSurface
+      vdp_output_surfaces[FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES];
   VdpPresentationQueue vdp_presentation_queue;
   VdpPresentationQueueTarget vdp_presentation_queue_target;
   unsigned int flag;

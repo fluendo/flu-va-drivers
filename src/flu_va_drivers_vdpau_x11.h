@@ -25,4 +25,19 @@ VAStatus flu_va_drivers_vdpau_context_ensure_presentation_queue (
     VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
     Drawable draw);
 
+void flu_va_drivers_vdpau_context_clear_output_surfaces (
+    FluVaDriversVdpauContextObject *context_obj);
+
+VAStatus flu_va_drivers_vdpau_destroy_output_surfaces (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    VdpOutputSurface *vdp_output_surfaces, int num_output_surfaces);
+
+VAStatus flu_va_drivers_vdpau_context_init_output_surfaces (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
+    unsigned int width, unsigned int height);
+
+VAStatus flu_va_drivers_vdpau_context_ensure_output_surfaces (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
+    unsigned int width, unsigned int height);
+
 #endif // __FLU_VA_DRIVERS_VDPAU_X11_H__

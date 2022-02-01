@@ -175,3 +175,79 @@ beach:
   flu_va_drivers_vdpau_context_destroy_presentaton_queue (ctx, context_obj);
   return VA_STATUS_ERROR_UNKNOWN;
 }
+
+void
+flu_va_drivers_vdpau_context_clear_output_surfaces (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  int i;
+  for (i = 0; i < FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES; i++)
+    context_obj->vdp_output_surfaces[i] = VDP_INVALID_HANDLE;
+}
+
+VAStatus
+flu_va_drivers_vdpau_destroy_output_surfaces (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    VdpOutputSurface *vdp_output_surfaces, int num_output_surfaces)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+  int i;
+
+  for (i = 0; i < num_output_surfaces; i++) {
+    VdpStatus vdp_st;
+
+    if (vdp_output_surfaces[i] == VDP_INVALID_HANDLE)
+      continue;
+
+    vdp_st = driver_data->vdp_impl.vdp_output_surface_destroy (
+        vdp_output_surfaces[i]);
+    vdp_output_surfaces[i] = VDP_INVALID_HANDLE;
+    if (va_st == VA_STATUS_SUCCESS && vdp_st != VDP_STATUS_OK)
+      va_st = VA_STATUS_ERROR_UNKNOWN;
+  }
+
+  return va_st;
+}
+
+VAStatus
+flu_va_drivers_vdpau_context_init_output_surfaces (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj, unsigned int width,
+    unsigned int height)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+  int i;
+
+  for (i = 0; i < FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES; i++) {
+    VdpStatus vdp_st;
+    vdp_st = driver_data->vdp_impl.vdp_output_surface_create (
+        driver_data->vdp_impl.vdp_device, VDP_RGBA_FORMAT_B8G8R8A8, width,
+        height, &context_obj->vdp_output_surfaces[i]);
+    if (vdp_st != VDP_STATUS_OK)
+      goto beach;
+  }
+
+  return va_st;
+
+beach:
+  return flu_va_drivers_vdpau_destroy_output_surfaces (
+      ctx, context_obj, context_obj->vdp_output_surfaces, i);
+}
+
+VAStatus
+flu_va_drivers_vdpau_context_ensure_output_surfaces (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj, unsigned int width,
+    unsigned int height)
+{
+  int initialized;
+
+  initialized = context_obj->vdp_output_surfaces[0] != VDP_INVALID_HANDLE;
+  if (initialized)
+    return VA_STATUS_SUCCESS;
+
+  return flu_va_drivers_vdpau_context_init_output_surfaces (
+      ctx, context_obj, width, height);
+}
