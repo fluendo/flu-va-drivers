@@ -114,3 +114,64 @@ create:
   return flu_va_drivers_vdpau_create_video_mixer (ctx, context_obj->base.id,
       width, height, va_rt_format, &context_obj->video_mixer_id);
 }
+
+VAStatus
+flu_va_drivers_vdpau_context_destroy_presentaton_queue (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VdpStatus vdp_st;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+
+  if (context_obj->vdp_presentation_queue_target != VDP_INVALID_HANDLE) {
+    vdp_st = driver_data->vdp_impl.vdp_presentation_queue_target_destroy (
+        context_obj->vdp_presentation_queue_target);
+    context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+    if (vdp_st != VDP_STATUS_OK)
+      va_st = VA_STATUS_ERROR_UNKNOWN;
+  }
+
+  if (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE) {
+    vdp_st = driver_data->vdp_impl.vdp_presentation_queue_destroy (
+        context_obj->vdp_presentation_queue);
+    context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
+    if (va_st == VA_STATUS_SUCCESS && vdp_st != VDP_STATUS_OK)
+      va_st = VA_STATUS_ERROR_UNKNOWN;
+  }
+
+  return va_st;
+}
+
+VAStatus
+flu_va_drivers_vdpau_context_ensure_presentation_queue (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj, Drawable draw)
+{
+  FluVaDriversVdpauDriverData *driver_data =
+      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+  VdpPresentationQueueTarget vdp_presentation_queue_target;
+  VdpPresentationQueue vdp_presentation_queue;
+  VAStatus va_st = VA_STATUS_SUCCESS;
+  VdpStatus vdp_st;
+
+  if (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE)
+    return va_st;
+
+  vdp_st = driver_data->vdp_impl.vdp_presentation_queue_target_create_x11 (
+      driver_data->vdp_impl.vdp_device, draw, &vdp_presentation_queue_target);
+  if (vdp_st != VDP_STATUS_OK)
+    goto beach;
+  context_obj->vdp_presentation_queue_target = vdp_presentation_queue_target;
+
+  vdp_st = driver_data->vdp_impl.vdp_presentation_queue_create (
+      driver_data->vdp_impl.vdp_device, vdp_presentation_queue_target,
+      &vdp_presentation_queue);
+  if (va_st == VA_STATUS_SUCCESS && vdp_st != VDP_STATUS_OK)
+    goto beach;
+  context_obj->vdp_presentation_queue = vdp_presentation_queue;
+
+  return va_st;
+beach:
+  flu_va_drivers_vdpau_context_destroy_presentaton_queue (ctx, context_obj);
+  return VA_STATUS_ERROR_UNKNOWN;
+}

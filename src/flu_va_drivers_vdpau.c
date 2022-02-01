@@ -291,25 +291,29 @@ flu_va_drivers_vdpau_destroy_context (
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
-  VAStatus va_st = VA_STATUS_SUCCESS;
+  VAStatus va_st, ret = VA_STATUS_SUCCESS;
   VdpStatus vdp_st;
   FluVaDriversVdpauVideoMixerObject *video_mixer_obj;
 
-  if (context_obj->vdp_decoder != VDP_INVALID_HANDLE)
-    vdp_st = driver_data->vdp_impl.vdp_decoder_destroy (
-                 context_obj->vdp_decoder) == VDP_STATUS_OK;
-
-  if (vdp_st != VDP_STATUS_OK)
-    va_st = VA_STATUS_ERROR_UNKNOWN;
+  if (context_obj->vdp_decoder != VDP_INVALID_HANDLE) {
+    vdp_st =
+        driver_data->vdp_impl.vdp_decoder_destroy (context_obj->vdp_decoder);
+    if (vdp_st != VDP_STATUS_OK)
+      ret = VA_STATUS_ERROR_UNKNOWN;
+  }
 
   video_mixer_obj = (FluVaDriversVdpauVideoMixerObject *) object_heap_lookup (
       &driver_data->video_mixer_heap, context_obj->video_mixer_id);
   if (video_mixer_obj) {
-    VAStatus destroy_st =
-        flu_va_drivers_vdpau_destroy_video_mixer (ctx, video_mixer_obj);
-    if (va_st == VA_STATUS_SUCCESS)
-      va_st = destroy_st;
+    va_st = flu_va_drivers_vdpau_destroy_video_mixer (ctx, video_mixer_obj);
+    if (ret == VA_STATUS_SUCCESS)
+      ret = va_st;
   }
+
+  va_st = flu_va_drivers_vdpau_context_destroy_presentaton_queue (
+      ctx, context_obj);
+  if (ret == VA_STATUS_SUCCESS)
+    ret = va_st;
 
   free (context_obj->render_targets);
   object_heap_free (&driver_data->context_heap, (object_base_p) context_obj);
@@ -354,6 +358,9 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->vdp_bs_buf = NULL;
   context_obj->vdp_decoder = VDP_INVALID_HANDLE;
   context_obj->video_mixer_id = FLU_VA_DRIVERS_INVALID_ID;
+  context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
+  context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+
   flu_va_drivers_vdpau_context_object_reset (context_obj);
 
   do {
@@ -716,6 +723,11 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
 
   va_st = flu_va_drivers_vdpau_context_ensure_video_mixer (ctx, context_obj,
       surface_obj->width, surface_obj->height, surface_obj->format);
+  if (va_st != VA_STATUS_SUCCESS)
+    return va_st;
+
+  va_st = flu_va_drivers_vdpau_context_ensure_presentation_queue (
+      ctx, context_obj, (Drawable) draw);
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 

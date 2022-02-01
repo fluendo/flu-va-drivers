@@ -18,4 +18,11 @@ VAStatus flu_va_drivers_vdpau_context_ensure_video_mixer (VADriverContextP ctx,
     FluVaDriversVdpauContextObject *context_obj, int width, int height,
     int va_rt_format);
 
+VAStatus flu_va_drivers_vdpau_context_destroy_presentaton_queue (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj);
+
+VAStatus flu_va_drivers_vdpau_context_ensure_presentation_queue (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
+    Drawable draw);
+
 #endif // __FLU_VA_DRIVERS_VDPAU_X11_H__

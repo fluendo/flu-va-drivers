@@ -83,6 +83,8 @@ struct _FluVaDriversVdpauContextObject
   VAConfigID config_id;
   int video_mixer_id;
   VdpDecoder vdp_decoder;
+  VdpPresentationQueue vdp_presentation_queue;
+  VdpPresentationQueueTarget vdp_presentation_queue_target;
   unsigned int flag;
   int picture_width;
   int picture_height;
