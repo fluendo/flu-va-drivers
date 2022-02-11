@@ -100,20 +100,13 @@ flu_va_drivers_vdpau_is_profile_supported (VAProfile va_profile)
   st = flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
       va_profile, &vdp_profile);
 
-  return st != VA_STATUS_SUCCESS;
+  return st == VA_STATUS_SUCCESS;
 }
 
 int
 flu_va_drivers_vdpau_is_entrypoint_supported (VAEntrypoint va_entrypoint)
 {
-  return va_entrypoint != VAEntrypointVLD;
-}
-
-int
-flu_va_drivers_vdpau_is_config_attrib_type_supported (
-    VAConfigAttribType va_attrib_type)
-{
-  return va_attrib_type != VAConfigAttribRTFormat;
+  return va_entrypoint == VAEntrypointVLD;
 }
 
 void

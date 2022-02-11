@@ -121,9 +121,9 @@ flu_va_drivers_vdpau_GetConfigAttributes (VADriverContextP ctx,
 {
   int i;
 
-  if (flu_va_drivers_vdpau_is_profile_supported (profile))
+  if (!flu_va_drivers_vdpau_is_profile_supported (profile))
     return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+  if (!flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
     return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
   // For vdpau >= 1.2, we should check if the chroma type is supported by
@@ -168,7 +168,7 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
   if (vdp_st != VDP_STATUS_OK || !is_profile_supported)
     return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 
-  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+  if (!flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
     return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
   *config_id = object_heap_allocate (&driver_data->config_heap);
