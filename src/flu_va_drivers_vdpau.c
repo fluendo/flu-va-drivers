@@ -182,18 +182,14 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
   config_obj->max_width = max_width;
   config_obj->max_height = max_height;
   config_obj->entrypoint = entrypoint;
-  config_obj->num_attribs = 0;
 
+  config_obj->num_attribs = 1;
+  config_obj->attrib_list[0].type = VAConfigAttribRTFormat;
+  config_obj->attrib_list[0].value = VA_RT_FORMAT_YUV420;
   attrib = flu_va_drivers_vdpau_lookup_config_attrib_type (
       attrib_list, num_attribs, VAConfigAttribRTFormat);
-  /* Only store the attribs that are actually supported. */
-  if (attrib &&
-      !flu_va_drivers_vdpau_is_config_attrib_type_supported (attrib->type) &&
-      attrib->value == VA_RT_FORMAT_YUV420) {
-    config_obj->attrib_list[0].type = VAConfigAttribRTFormat;
-    config_obj->attrib_list[0].value = VA_RT_FORMAT_YUV420;
-    config_obj->num_attribs = 1;
-  }
+  if (attrib && attrib->value != VA_RT_FORMAT_YUV420)
+    return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
 
   return VA_STATUS_SUCCESS;
 }
