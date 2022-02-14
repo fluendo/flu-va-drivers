@@ -65,6 +65,8 @@ struct _FluVaDriversVdpauVdpDeviceImpl
   VdpVideoMixerGetAttributeValues *vdp_video_mixer_get_attribute_values;
   VdpVideoMixerDestroy *vdp_video_mixer_destroy;
   VdpVideoMixerRender *vdp_video_mixer_render;
+  VdpPresentationQueueTargetCreateX11
+      *vdp_presentation_queue_target_create_x11;
   VdpPresentationQueueTargetDestroy *vdp_presentation_queue_target_destroy;
   VdpPresentationQueueCreate *vdp_presentation_queue_create;
   VdpPresentationQueueDestroy *vdp_presentation_queue_destroy;

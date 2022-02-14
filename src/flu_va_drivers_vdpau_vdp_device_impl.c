@@ -76,6 +76,8 @@ flu_va_drivers_vdpau_vdp_device_impl_init (
       VIDEO_MIXER_GET_ATTRIBUTE_VALUES, video_mixer_get_attribute_values)
   _DEV_FUNC (VIDEO_MIXER_DESTROY, video_mixer_destroy)
   _DEV_FUNC (VIDEO_MIXER_RENDER, video_mixer_render)
+  _DEV_FUNC (PRESENTATION_QUEUE_TARGET_CREATE_X11,
+      presentation_queue_target_create_x11)
   _DEV_FUNC (
       PRESENTATION_QUEUE_TARGET_DESTROY, presentation_queue_target_destroy)
   _DEV_FUNC (PRESENTATION_QUEUE_CREATE, presentation_queue_create)

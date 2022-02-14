@@ -34,6 +34,50 @@ flu_va_drivers_map_va_profile_to_vdpau_decoder_profile (
   return ret;
 }
 
+VAStatus
+flu_va_drivers_map_va_rt_format_to_vdp_chroma_type (
+    int va_rt_format, VdpChromaType *vdp_chroma_type)
+{
+  VAStatus ret = VA_STATUS_SUCCESS;
+  switch (va_rt_format) {
+    case VA_RT_FORMAT_YUV420:
+      *vdp_chroma_type = VDP_CHROMA_TYPE_420;
+      break;
+    default:
+      ret = VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+  }
+
+  return ret;
+}
+
+VAStatus
+flu_va_drivers_map_va_flag_to_vdp_video_mixer_picture_structure (
+    int va_flag, VdpVideoMixerPictureStructure *vdp_flag)
+{
+  va_flag &= 0xf;
+
+  if (va_flag & VA_TOP_FIELD)
+    *vdp_flag = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_TOP_FIELD;
+  else if (va_flag & VA_BOTTOM_FIELD)
+    *vdp_flag = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_BOTTOM_FIELD;
+  else if (va_flag == VA_FRAME_PICTURE)
+    *vdp_flag = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME;
+  else
+    return VA_STATUS_ERROR_UNKNOWN;
+
+  return VA_STATUS_SUCCESS;
+}
+
+void
+flu_va_drivers_map_va_rectangle_to_vdp_rect (
+    const VARectangle *va_rect, VdpRect *vdp_rect)
+{
+  vdp_rect->x0 = va_rect->x;
+  vdp_rect->y0 = va_rect->y;
+  vdp_rect->x1 = va_rect->x + va_rect->width;
+  vdp_rect->y1 = va_rect->y + va_rect->height;
+}
+
 VAConfigAttrib *
 flu_va_drivers_vdpau_lookup_config_attrib_type (VAConfigAttrib *attrib_list,
     int num_attribs, VAConfigAttribType attrib_type)
