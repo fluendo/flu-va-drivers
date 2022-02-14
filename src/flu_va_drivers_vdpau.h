@@ -93,6 +93,7 @@ struct _FluVaDriversVdpauContextObject
   VASliceParameterBufferH264 *last_slice_param;
   VdpBitstreamBuffer *vdp_bs_buf;
   unsigned int num_vdp_bs_buf;
+  unsigned int cap_vdp_bs_buf;
 };
 typedef struct _FluVaDriversVdpauContextObject FluVaDriversVdpauContextObject;
 
