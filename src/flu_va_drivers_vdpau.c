@@ -47,6 +47,9 @@ flu_va_drivers_vdpau_Terminate (VADriverContextP ctx)
   object_heap_terminate (&driver_data->image_heap);
   object_heap_terminate (&driver_data->subpic_heap);
 
+  if (driver_data->x11_dpy != ctx->native_dpy)
+    XCloseDisplay (driver_data->x11_dpy);
+
   free (driver_data);
 
   return VA_STATUS_SUCCESS;
@@ -761,8 +764,8 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 
-  if (!XGetGeometry (ctx->native_dpy, (Drawable) draw, &win, &x, &y, &width,
-          &height, &border_width, &depth))
+  if (!XGetGeometry (driver_data->x11_dpy, (Drawable) draw, &win, &x, &y,
+          &width, &height, &border_width, &depth))
     return VA_STATUS_ERROR_UNKNOWN;
 
   va_st = flu_va_drivers_vdpau_context_ensure_output_surfaces (
@@ -1358,13 +1361,19 @@ flu_va_drivers_vdpau_data_init (FluVaDriversVdpauDriverData *driver_data)
   VdpGetProcAddress *get_proc_address;
   VdpDevice device = VDP_INVALID_HANDLE;
   int heap_sz = sizeof (struct object_heap);
+  const char *x11_dpy_name;
 
   flu_va_drivers_get_vendor (driver_data->va_vendor);
 
   if (ctx->display_type != VA_DISPLAY_X11)
     return VA_STATUS_ERROR_INVALID_DISPLAY;
 
-  if (vdp_device_create_x11 (ctx->native_dpy, ctx->x11_screen, &device,
+  x11_dpy_name = XDisplayString (ctx->native_dpy);
+  driver_data->x11_dpy = XOpenDisplay (x11_dpy_name);
+  if (!driver_data->x11_dpy)
+    driver_data->x11_dpy = ctx->native_dpy;
+
+  if (vdp_device_create_x11 (driver_data->x11_dpy, ctx->x11_screen, &device,
           &get_proc_address) != VDP_STATUS_OK)
     return VA_STATUS_ERROR_UNKNOWN;
 

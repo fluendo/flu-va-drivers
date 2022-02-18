@@ -42,6 +42,7 @@ struct _FluVaDriversVdpauDriverData
   VADriverContextP ctx;
   char va_vendor[256];
   FluVaDriversVdpauVdpDeviceImpl vdp_impl;
+  Display *x11_dpy;
   struct object_heap config_heap;
   struct object_heap context_heap;
   struct object_heap surface_heap;
