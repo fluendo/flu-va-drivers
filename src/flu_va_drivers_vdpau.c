@@ -309,8 +309,8 @@ flu_va_drivers_vdpau_destroy_context (
       ret = va_st;
   }
 
-  va_st = flu_va_drivers_vdpau_context_destroy_presentaton_queue (
-      ctx, context_obj);
+  va_st =
+      flu_va_drivers_vdpau_context_destroy_presentaton_queue_map (context_obj);
   if (ret == VA_STATUS_SUCCESS)
     ret = va_st;
 
@@ -362,6 +362,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->vdp_bs_buf = NULL;
   context_obj->vdp_decoder = VDP_INVALID_HANDLE;
   context_obj->video_mixer_id = FLU_VA_DRIVERS_INVALID_ID;
+  flu_va_drivers_vdpau_context_init_presentaton_queue_map (context_obj);
   context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
   context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
   context_obj->vdp_output_surface_idx = 0;
@@ -727,6 +728,7 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
   FluVaDriversVdpauContextObject *context_obj;
   FluVaDriversVdpauSurfaceObject *surface_obj;
+  FluVaDriversVdpauPresentationQueueMapEntry *vdp_presentation_queue_map_entry;
   VAStatus va_st = VA_STATUS_SUCCESS;
   VdpVideoMixerPictureStructure vdp_field;
   Window win;
@@ -759,8 +761,8 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 
-  va_st = flu_va_drivers_vdpau_context_ensure_presentation_queue (
-      ctx, context_obj, (Drawable) draw);
+  va_st = flu_va_drivers_vdpau_context_ensure_presentation_queue_map_entry (
+      ctx, context_obj, (Drawable) draw, &vdp_presentation_queue_map_entry);
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 
@@ -774,7 +776,8 @@ flu_va_drivers_vdpau_PutSurface (VADriverContextP ctx, VASurfaceID surface,
     return va_st;
 
   return flu_va_drivers_vdpau_render (ctx, context_obj, surface_obj,
-      (Drawable) draw, width, height, &dst_rect, vdp_field);
+      (Drawable) draw, vdp_presentation_queue_map_entry, width, height,
+      &dst_rect, vdp_field);
 }
 
 static VAStatus

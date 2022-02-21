@@ -9,6 +9,7 @@
 #include <vdpau/vdpau_x11.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/queue.h>
 #include "flu_va_drivers_vdpau_vdp_device_impl.h"
 #include "../ext/intel/intel-vaapi-drivers/object_heap.h"
 #include "object_heap/object_heap_utils.h"
@@ -79,6 +80,13 @@ struct _FluVaDriversVdpauSurfaceObject
 };
 typedef struct _FluVaDriversVdpauSurfaceObject FluVaDriversVdpauSurfaceObject;
 
+typedef struct _FluVaDriversVdpauPresentationQueueMapEntry
+    FluVaDriversVdpauPresentationQueueMapEntry;
+SLIST_HEAD (_FluVaDriversVdpauPresentationQueueMap,
+    _FluVaDriversVdpauPresentationQueueMapEntry);
+typedef struct _FluVaDriversVdpauPresentationQueueMap
+    FluVaDriversVdpauPresentationQueueMap;
+
 struct _FluVaDriversVdpauContextObject
 {
   struct object_base base;
@@ -88,6 +96,7 @@ struct _FluVaDriversVdpauContextObject
   VdpOutputSurface
       vdp_output_surfaces[FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES];
   unsigned int vdp_output_surface_idx;
+  FluVaDriversVdpauPresentationQueueMap vdp_presentation_queue_map;
   VdpPresentationQueue vdp_presentation_queue;
   VdpPresentationQueueTarget vdp_presentation_queue_target;
   unsigned int flag;

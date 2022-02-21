@@ -3,9 +3,19 @@
 
 #include <va/va.h>
 #include <vdpau/vdpau.h>
+#include <sys/queue.h>
 #include "flu_va_drivers_utils.h"
 #include "flu_va_drivers_vdpau.h"
 #include "flu_va_drivers_vdpau_utils.h"
+
+struct _FluVaDriversVdpauPresentationQueueMapEntry
+{
+  VADriverContextP ctx;
+  Drawable drawable;
+  VdpPresentationQueue vdp_presentation_queue;
+  VdpPresentationQueueTarget vdp_presentation_queue_target;
+  SLIST_ENTRY (_FluVaDriversVdpauPresentationQueueMapEntry) entries;
+};
 
 VAStatus flu_va_drivers_vdpau_destroy_video_mixer (
     VADriverContextP ctx, FluVaDriversVdpauVideoMixerObject *video_mixer_obj);
@@ -18,12 +28,15 @@ VAStatus flu_va_drivers_vdpau_context_ensure_video_mixer (VADriverContextP ctx,
     FluVaDriversVdpauContextObject *context_obj, int width, int height,
     int va_rt_format);
 
-VAStatus flu_va_drivers_vdpau_context_destroy_presentaton_queue (
-    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj);
+void flu_va_drivers_vdpau_context_init_presentaton_queue_map (
+    FluVaDriversVdpauContextObject *context_obj);
 
-VAStatus flu_va_drivers_vdpau_context_ensure_presentation_queue (
+VAStatus flu_va_drivers_vdpau_context_destroy_presentaton_queue_map (
+    FluVaDriversVdpauContextObject *context_obj);
+
+VAStatus flu_va_drivers_vdpau_context_ensure_presentation_queue_map_entry (
     VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
-    Drawable draw);
+    Drawable draw, FluVaDriversVdpauPresentationQueueMapEntry **entry);
 
 void flu_va_drivers_vdpau_context_clear_output_surfaces (
     FluVaDriversVdpauContextObject *context_obj);
@@ -43,6 +56,7 @@ VAStatus flu_va_drivers_vdpau_context_ensure_output_surfaces (
 VAStatus flu_va_drivers_vdpau_render (VADriverContextP ctx,
     FluVaDriversVdpauContextObject *context_obj,
     FluVaDriversVdpauSurfaceObject *surface_obj, Drawable draw,
+    FluVaDriversVdpauPresentationQueueMapEntry *presentation_queue_map_entry,
     unsigned int draw_width, unsigned int draw_height,
     const VARectangle *dst_rect, VdpVideoMixerPictureStructure vdp_field);
 
