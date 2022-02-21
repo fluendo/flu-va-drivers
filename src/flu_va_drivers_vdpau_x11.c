@@ -115,37 +115,96 @@ create:
       width, height, va_rt_format, &context_obj->video_mixer_id);
 }
 
+static FluVaDriversVdpauPresentationQueueMapEntry *
+flu_va_drivers_vdpau_new_presentation_queue_map_entry (
+    VADriverContextP ctx, Drawable draw)
+{
+  FluVaDriversVdpauPresentationQueueMapEntry *entry;
+
+  entry = malloc (sizeof (FluVaDriversVdpauPresentationQueueMapEntry));
+  entry->ctx = ctx;
+  entry->drawable = draw;
+  entry->vdp_presentation_queue = VDP_INVALID_HANDLE;
+  entry->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+
+  return entry;
+}
+
 VAStatus
-flu_va_drivers_vdpau_context_destroy_presentaton_queue (
-    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
+flu_va_drivers_vdpau_context_destroy_presentaton_queue_entry (
+    FluVaDriversVdpauPresentationQueueMapEntry *entry)
 {
   FluVaDriversVdpauDriverData *driver_data =
-      (FluVaDriversVdpauDriverData *) ctx->pDriverData;
+      (FluVaDriversVdpauDriverData *) entry->ctx->pDriverData;
   VdpStatus vdp_st;
   VAStatus va_st = VA_STATUS_SUCCESS;
 
-  if (context_obj->vdp_presentation_queue_target != VDP_INVALID_HANDLE) {
+  if (entry->vdp_presentation_queue_target != VDP_INVALID_HANDLE) {
     vdp_st = driver_data->vdp_impl.vdp_presentation_queue_target_destroy (
-        context_obj->vdp_presentation_queue_target);
-    context_obj->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
+        entry->vdp_presentation_queue_target);
+    entry->vdp_presentation_queue_target = VDP_INVALID_HANDLE;
     if (vdp_st != VDP_STATUS_OK)
       va_st = VA_STATUS_ERROR_UNKNOWN;
   }
 
-  if (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE) {
+  if (entry->vdp_presentation_queue != VDP_INVALID_HANDLE) {
     vdp_st = driver_data->vdp_impl.vdp_presentation_queue_destroy (
-        context_obj->vdp_presentation_queue);
-    context_obj->vdp_presentation_queue = VDP_INVALID_HANDLE;
+        entry->vdp_presentation_queue);
+    entry->vdp_presentation_queue = VDP_INVALID_HANDLE;
     if (va_st == VA_STATUS_SUCCESS && vdp_st != VDP_STATUS_OK)
       va_st = VA_STATUS_ERROR_UNKNOWN;
   }
 
+  free (entry);
+
   return va_st;
 }
 
-VAStatus
-flu_va_drivers_vdpau_context_ensure_presentation_queue (VADriverContextP ctx,
+static FluVaDriversVdpauPresentationQueueMapEntry *
+flu_va_drivers_vdpau_context_find_presentation_queue_map_entry (
     FluVaDriversVdpauContextObject *context_obj, Drawable draw)
+{
+  FluVaDriversVdpauPresentationQueueMapEntry *entry = NULL;
+
+  for (entry = SLIST_FIRST (&context_obj->vdp_presentation_queue_map);
+       entry != NULL; entry = SLIST_NEXT (entry, entries)) {
+    if (entry->drawable == draw)
+      break;
+  }
+  return entry;
+}
+
+void
+flu_va_drivers_vdpau_context_init_presentaton_queue_map (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  SLIST_INIT (&context_obj->vdp_presentation_queue_map);
+}
+
+VAStatus
+flu_va_drivers_vdpau_context_destroy_presentaton_queue_map (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  VAStatus ret = VA_STATUS_SUCCESS;
+
+  while (!SLIST_EMPTY (&context_obj->vdp_presentation_queue_map)) {
+    VAStatus va_st;
+    FluVaDriversVdpauPresentationQueueMapEntry *entry =
+        SLIST_FIRST (&context_obj->vdp_presentation_queue_map);
+    SLIST_REMOVE_HEAD (&context_obj->vdp_presentation_queue_map, entries);
+    va_st =
+        flu_va_drivers_vdpau_context_destroy_presentaton_queue_entry (entry);
+    if (ret == VA_STATUS_SUCCESS && va_st != VA_STATUS_SUCCESS)
+      ret = va_st;
+  }
+
+  return ret;
+}
+
+VAStatus
+flu_va_drivers_vdpau_context_ensure_presentation_queue_map_entry (
+    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj,
+    Drawable draw, FluVaDriversVdpauPresentationQueueMapEntry **entry)
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
@@ -154,25 +213,29 @@ flu_va_drivers_vdpau_context_ensure_presentation_queue (VADriverContextP ctx,
   VAStatus va_st = VA_STATUS_SUCCESS;
   VdpStatus vdp_st;
 
-  if (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE)
+  *entry = flu_va_drivers_vdpau_context_find_presentation_queue_map_entry (
+      context_obj, draw);
+  if (*entry != NULL)
     return va_st;
+
+  *entry = flu_va_drivers_vdpau_new_presentation_queue_map_entry (ctx, draw);
 
   vdp_st = driver_data->vdp_impl.vdp_presentation_queue_target_create_x11 (
       driver_data->vdp_impl.vdp_device, draw, &vdp_presentation_queue_target);
   if (vdp_st != VDP_STATUS_OK)
     goto beach;
-  context_obj->vdp_presentation_queue_target = vdp_presentation_queue_target;
+  (*entry)->vdp_presentation_queue_target = vdp_presentation_queue_target;
 
   vdp_st = driver_data->vdp_impl.vdp_presentation_queue_create (
       driver_data->vdp_impl.vdp_device, vdp_presentation_queue_target,
       &vdp_presentation_queue);
   if (va_st == VA_STATUS_SUCCESS && vdp_st != VDP_STATUS_OK)
     goto beach;
-  context_obj->vdp_presentation_queue = vdp_presentation_queue;
+  (*entry)->vdp_presentation_queue = vdp_presentation_queue;
 
   return va_st;
 beach:
-  flu_va_drivers_vdpau_context_destroy_presentaton_queue (ctx, context_obj);
+  flu_va_drivers_vdpau_context_destroy_presentaton_queue_entry (*entry);
   return VA_STATUS_ERROR_UNKNOWN;
 }
 
@@ -253,8 +316,9 @@ flu_va_drivers_vdpau_context_ensure_output_surfaces (VADriverContextP ctx,
 }
 
 static VAStatus
-flu_va_drivers_vdpau_wait_on_current_output_surface (
-    VADriverContextP ctx, FluVaDriversVdpauContextObject *context_obj)
+flu_va_drivers_vdpau_wait_on_current_output_surface (VADriverContextP ctx,
+    FluVaDriversVdpauContextObject *context_obj,
+    VdpPresentationQueue vdp_presentation_queue)
 {
   FluVaDriversVdpauDriverData *driver_data =
       (FluVaDriversVdpauDriverData *) ctx->pDriverData;
@@ -263,12 +327,12 @@ flu_va_drivers_vdpau_wait_on_current_output_surface (
   VdpStatus vdp_st;
   VdpTime unused;
 
-  assert (context_obj->vdp_presentation_queue != VDP_INVALID_HANDLE);
+  assert (vdp_presentation_queue != VDP_INVALID_HANDLE);
   assert (vdp_output_surface != VDP_INVALID_HANDLE);
 
   vdp_st =
       driver_data->vdp_impl.vdp_presentation_queue_block_until_surface_idle (
-          context_obj->vdp_presentation_queue, vdp_output_surface, &unused);
+          vdp_presentation_queue, vdp_output_surface, &unused);
 
   if (vdp_st != VDP_STATUS_OK)
     return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
@@ -279,6 +343,7 @@ VAStatus
 flu_va_drivers_vdpau_render (VADriverContextP ctx,
     FluVaDriversVdpauContextObject *context_obj,
     FluVaDriversVdpauSurfaceObject *surface_obj, Drawable draw,
+    FluVaDriversVdpauPresentationQueueMapEntry *presentation_queue_map_entry,
     unsigned int draw_width, unsigned int draw_height,
     const VARectangle *dst_rect, VdpVideoMixerPictureStructure vdp_field)
 {
@@ -291,8 +356,8 @@ flu_va_drivers_vdpau_render (VADriverContextP ctx,
   VdpStatus vdp_st;
   VdpRect vdp_src_rect, vdp_dst_rect;
 
-  va_st =
-      flu_va_drivers_vdpau_wait_on_current_output_surface (ctx, context_obj);
+  va_st = flu_va_drivers_vdpau_wait_on_current_output_surface (
+      ctx, context_obj, presentation_queue_map_entry->vdp_presentation_queue);
   if (va_st != VA_STATUS_SUCCESS)
     return va_st;
 
@@ -322,8 +387,8 @@ flu_va_drivers_vdpau_render (VADriverContextP ctx,
     return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
 
   vdp_st = driver_data->vdp_impl.vdp_presentation_queue_display (
-      context_obj->vdp_presentation_queue, vdp_output_surface, draw_width,
-      draw_height, 0);
+      presentation_queue_map_entry->vdp_presentation_queue, vdp_output_surface,
+      draw_width, draw_height, 0);
   if (vdp_st != VDP_STATUS_OK)
     return VA_STATUS_ERROR_SURFACE_IN_DISPLAYING;
 
