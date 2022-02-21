@@ -1,6 +1,7 @@
 DEFAULT_NODE = 'docker-fluffgst-ubuntu-bionic'
 DEFAULT_TEST_NODE = "linux-amd-gpu"
 FLUSTER_REPO = 'git@github.com:fluendo/fluster.git'
+FLUSTER_RESULT_REPO = 'git@bitbucket.org:fluendo/fluster-results.git'
 DEFAULT_LIBVA_BRANCH = '2.10.0'
 
 
@@ -31,6 +32,11 @@ properties([
             name: 'BRANCH',
             defaultValue: '',
             description: 'Branch to build the codec (to relase use VERSION)',
+        ),
+        string(
+            name: 'FLUSTER_RESULTS_BRANCH',
+            defaultValue: 'master',
+            description: 'Branch to use to compare the fluster execution',
         ),
     ]),
 ])
@@ -146,6 +152,7 @@ node(DEFAULT_NODE) {
                     ]) {
                         def thArg = fluster.th  ? "-th ${fluster.th}" : ""
                         def tthArg = fluster.tth  ? "-tth ${fluster.tth}" : ""
+                        def summaryOutPath = "${logDir}/summary.log"
 
                         sh(script: 'vainfo', label: 'Run vainfo')
                         sh(script: 'gst-inspect-1.0 fluvadec', label: 'Run gst-inspect-1.0')
@@ -153,9 +160,29 @@ node(DEFAULT_NODE) {
                         sh(
                             script: (
                                 "./fluster.py ${fluster.mainArgs} run -t 60 -ts ${fluster.ts} " +
-                                "-d ${fluster.decoder} ${thArg} ${tthArg} -j1 -so ${logDir}/summary.log"),
+                                "-d ${fluster.decoder} ${thArg} ${tthArg} -j1 -so ${summaryOutPath}"),
                             label: 'Run Fluster'
                         )
+
+                        def expectedSummaryOutPath = "${env.WORKSPACE}/expected.out"
+                        def expectedSummaryGitPath = 'flu-va-drivers/qa-vdpau/Fluendo-H.264-HW-Gst1.0.out'
+                        def flusterResultsBranch = getRepoBranch(FLUSTER_RESULT_REPO,
+                            env.BRANCH_NAME, params.FLUSTER_RESULTS_BRANCH ?: 'master')
+                        sh(script: ("git archive --format=tar --remote=${FLUSTER_RESULT_REPO} " + 
+                                    "${flusterResultsBranch} ${expectedSummaryGitPath} | " +
+                                    "tar -xO | grep -i '|Test|' -A 999 > ${expectedSummaryOutPath}"),
+                           label: 'Download Fluster expected results')
+
+                        def diffParams = '-uB -I"|Test|" -I"|TOTAL TIME|" --strip-trailing-cr'
+                        def res = sh(script: "diff $diffParams ${expectedSummaryOutPath} ${summaryOutPath}",
+                           label: 'Compare Fluster results', returnStatus: true)
+                        if (res == 3) {
+                            error("Fluster correct tests below time threshold (${tth})")
+                        } else if (res == 2) {
+                            error("Fluster correct tests below threshold (${th})")
+                        } else if (res != 0) {
+                            error("Fluster error (exit status is ${res})")
+                        }
                     }
                 }
             }
