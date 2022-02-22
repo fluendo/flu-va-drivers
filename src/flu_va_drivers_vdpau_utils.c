@@ -340,7 +340,7 @@ flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
 
       if (context_obj->vdp_bs_buf == NULL) {
         ret = flu_va_drivers_vdpau_context_object_alloc_vdp_bs_buf (
-            context_obj, repend_nalu_start_code);
+            context_obj, prepend_nalu_start_code);
         if (ret != VA_STATUS_SUCCESS)
           break;
       }
