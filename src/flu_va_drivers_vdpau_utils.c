@@ -119,7 +119,55 @@ flu_va_drivers_vdpau_context_object_reset (
   if (context_obj->vdp_bs_buf != NULL)
     free (context_obj->vdp_bs_buf);
   context_obj->vdp_bs_buf = NULL;
+  context_obj->cap_vdp_bs_buf = 0;
   context_obj->num_vdp_bs_buf = 0;
+}
+
+static void
+flu_va_drivers_vdpau_context_object_free_vdp_bs_buf (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  if (context_obj->vdp_bs_buf == NULL)
+    return;
+
+  free (context_obj->vdp_bs_buf);
+  context_obj->vdp_bs_buf = NULL;
+  context_obj->num_vdp_bs_buf = 0;
+  context_obj->cap_vdp_bs_buf = 0;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_context_object_alloc_vdp_bs_buf (
+    FluVaDriversVdpauContextObject *context_obj, int prepend_nalu_start_code)
+{
+  if (!prepend_nalu_start_code)
+    context_obj->cap_vdp_bs_buf = 1;
+  else
+    context_obj->cap_vdp_bs_buf = 2;
+
+  context_obj->num_vdp_bs_buf = 0;
+  context_obj->vdp_bs_buf =
+      malloc (context_obj->cap_vdp_bs_buf * sizeof (VdpBitstreamBuffer));
+
+  if (context_obj->vdp_bs_buf == NULL)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  return VA_STATUS_SUCCESS;
+}
+
+static VAStatus
+flu_va_drivers_vdpau_context_object_try_realloc_vdp_bs_buf (
+    FluVaDriversVdpauContextObject *context_obj)
+{
+  if (context_obj->num_vdp_bs_buf != context_obj->cap_vdp_bs_buf)
+    return VA_STATUS_SUCCESS;
+
+  context_obj->cap_vdp_bs_buf *= 2;
+  context_obj->vdp_bs_buf = realloc (context_obj->vdp_bs_buf,
+      context_obj->cap_vdp_bs_buf * sizeof (VdpBitstreamBuffer));
+
+  if (context_obj->vdp_bs_buf == NULL)
+    return VA_STATUS_ERROR_ALLOCATION_FAILED;
+  return VA_STATUS_SUCCESS;
 }
 
 static void
@@ -249,6 +297,9 @@ flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
       VASliceParameterBufferH264 *param =
           (VASliceParameterBufferH264 *) buffer_obj->data;
 
+      if (context_obj->last_buffer_type != VASliceDataBufferType)
+        flu_va_drivers_vdpau_context_object_free_vdp_bs_buf (context_obj);
+
       vdp_pic_info->slice_count += buffer_obj->num_elements;
       _MAP_FIELD (num_ref_idx_l0_active_minus1);
       _MAP_FIELD (num_ref_idx_l1_active_minus1);
@@ -264,17 +315,19 @@ flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
       // of calls to vaBeginPicture, vaRenderPicture, vaEndPicture will have an
       // empty vdp_bs_buf.
 
-      assert ((context_obj->vdp_bs_buf != NULL &&
-                  context_obj->num_vdp_bs_buf > 0) ||
-              (context_obj->vdp_bs_buf == NULL &&
-                  context_obj->num_vdp_bs_buf == 0));
+      assert (
+          (context_obj->vdp_bs_buf != NULL &&
+              context_obj->num_vdp_bs_buf > 0 &&
+              context_obj->num_vdp_bs_buf <= context_obj->cap_vdp_bs_buf) ||
+          (context_obj->vdp_bs_buf == NULL &&
+              context_obj->num_vdp_bs_buf == 0 &&
+              context_obj->cap_vdp_bs_buf == 0));
       // This driver supports only if a VASliceDataBufferType buffer follows a
       // a VASliceParameterBufferType buffer. Also, this driver supports only
       // one buffer of this type between vaBeginPicture and vaEndPicture
       // lifetime as it seems to be the most common.
       if (context_obj->last_slice_param == NULL ||
-          context_obj->last_buffer_type != VASliceParameterBufferType ||
-          context_obj->vdp_bs_buf != NULL) {
+          context_obj->last_buffer_type != VASliceParameterBufferType) {
         ret = VA_STATUS_ERROR_UNKNOWN;
         break;
       }
@@ -285,16 +338,15 @@ flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
           memcmp (buf, NALU_START_CODE, sizeof (NALU_START_CODE)) != 0 &&
           memcmp (buf, NALU_START_CODE_4, sizeof (NALU_START_CODE_4)) != 0;
 
-      /* Assume vaRenderPicture is called with a single slice data buf */
-      if (!prepend_nalu_start_code)
-        context_obj->vdp_bs_buf = malloc (sizeof (VdpBitstreamBuffer));
-      else
-        context_obj->vdp_bs_buf = malloc (2 * sizeof (VdpBitstreamBuffer));
-
       if (context_obj->vdp_bs_buf == NULL) {
-        ret = VA_STATUS_ERROR_ALLOCATION_FAILED;
-        break;
+        ret = flu_va_drivers_vdpau_context_object_alloc_vdp_bs_buf (
+            context_obj, repend_nalu_start_code);
+        if (ret != VA_STATUS_SUCCESS)
+          break;
       }
+      if ((ret = flu_va_drivers_vdpau_context_object_try_realloc_vdp_bs_buf (
+               context_obj)) != VA_STATUS_SUCCESS)
+        break;
 
       if (prepend_nalu_start_code)
         flu_va_drivers_vdpau_context_object_append_vdp_bs_buf (
