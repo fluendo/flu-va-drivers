@@ -121,9 +121,9 @@ flu_va_drivers_vdpau_GetConfigAttributes (VADriverContextP ctx,
 {
   int i;
 
-  if (flu_va_drivers_vdpau_is_profile_supported (profile))
+  if (!flu_va_drivers_vdpau_is_profile_supported (profile))
     return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+  if (!flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
     return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
   // For vdpau >= 1.2, we should check if the chroma type is supported by
@@ -168,7 +168,7 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
   if (vdp_st != VDP_STATUS_OK || !is_profile_supported)
     return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 
-  if (flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
+  if (!flu_va_drivers_vdpau_is_entrypoint_supported (entrypoint))
     return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 
   *config_id = object_heap_allocate (&driver_data->config_heap);
@@ -182,18 +182,14 @@ flu_va_drivers_vdpau_CreateConfig (VADriverContextP ctx, VAProfile profile,
   config_obj->max_width = max_width;
   config_obj->max_height = max_height;
   config_obj->entrypoint = entrypoint;
-  config_obj->num_attribs = 0;
 
+  config_obj->num_attribs = 1;
+  config_obj->attrib_list[0].type = VAConfigAttribRTFormat;
+  config_obj->attrib_list[0].value = VA_RT_FORMAT_YUV420;
   attrib = flu_va_drivers_vdpau_lookup_config_attrib_type (
       attrib_list, num_attribs, VAConfigAttribRTFormat);
-  /* Only store the attribs that are actually supported. */
-  if (attrib &&
-      !flu_va_drivers_vdpau_is_config_attrib_type_supported (attrib->type) &&
-      attrib->value == VA_RT_FORMAT_YUV420) {
-    config_obj->attrib_list[0].type = VAConfigAttribRTFormat;
-    config_obj->attrib_list[0].value = VA_RT_FORMAT_YUV420;
-    config_obj->num_attribs = 1;
-  }
+  if (attrib && attrib->value != VA_RT_FORMAT_YUV420)
+    return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
 
   return VA_STATUS_SUCCESS;
 }
@@ -358,8 +354,7 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
   context_obj->flag = flag;
   context_obj->picture_width = picture_width;
   context_obj->picture_height = picture_height;
-  context_obj->render_targets =
-      calloc (num_render_targets, sizeof (VASurfaceID));
+  context_obj->render_targets = NULL;
   context_obj->num_render_targets = num_render_targets;
   context_obj->vdp_bs_buf = NULL;
   context_obj->vdp_decoder = VDP_INVALID_HANDLE;
@@ -371,18 +366,25 @@ flu_va_drivers_vdpau_CreateContext (VADriverContextP ctx, VAConfigID config_id,
 
   flu_va_drivers_vdpau_context_object_reset (context_obj);
 
+  if (num_render_targets == 0)
+    goto bye;
+
+  context_obj->render_targets =
+      calloc (num_render_targets, sizeof (VASurfaceID));
   do {
     FluVaDriversVdpauSurfaceObject *surface_obj;
     surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
         &driver_data->surface_heap, render_targets[i]);
 
-    if (surface_obj == NULL || surface_obj->context_id != VA_INVALID_ID)
+    if (surface_obj == NULL || (surface_obj->context_id != VA_INVALID_ID &&
+                                   surface_obj->context_id != context_obj_id))
       goto invalid_surface;
 
     context_obj->render_targets[i] = render_targets[i];
     surface_obj->context_id = (VAContextID) context_obj_id;
   } while (++i < num_render_targets);
 
+bye:
   *context = context_obj_id;
   return VA_STATUS_SUCCESS;
 
@@ -537,7 +539,8 @@ flu_va_drivers_vdpau_BeginPicture (
 
   surface_obj = (FluVaDriversVdpauSurfaceObject *) object_heap_lookup (
       &driver_data->surface_heap, render_target);
-  if (surface_obj == NULL || surface_obj->context_id != context)
+  if (surface_obj == NULL || (surface_obj->context_id != VA_INVALID_ID &&
+                                 surface_obj->context_id != context))
     return VA_STATUS_ERROR_INVALID_SURFACE;
 
   context_obj = (FluVaDriversVdpauContextObject *) object_heap_lookup (
@@ -548,6 +551,8 @@ flu_va_drivers_vdpau_BeginPicture (
 
   flu_va_drivers_vdpau_context_object_reset (context_obj);
   context_obj->current_render_target = render_target;
+  if (surface_obj->context_id == VA_INVALID_ID)
+    surface_obj->context_id = context;
 
   return VA_STATUS_SUCCESS;
 }
@@ -572,7 +577,9 @@ flu_va_drivers_vdpau_RenderPicture (VADriverContextP ctx, VAContextID context,
       &driver_data->surface_heap, context_obj->current_render_target);
   if (surface_obj == NULL)
     return VA_STATUS_ERROR_INVALID_SURFACE;
-  assert (surface_obj->context_id == context);
+  assert (surface_obj->context_id == VA_INVALID_ID ||
+          (surface_obj->context_id != VA_INVALID_ID &&
+              surface_obj->context_id == context));
 
   for (i = 0; i < num_buffers; i++) {
     FluVaDriversVdpauBufferObject *buffer_obj;
