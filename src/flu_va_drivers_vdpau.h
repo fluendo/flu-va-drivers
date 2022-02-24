@@ -27,6 +27,10 @@
 #define FLU_VA_DRIVERS_VDPAU_NUM_OUTPUT_SURFACES       3
 // clang-format on
 
+/* HACK: Use alignment values for CFL. */
+#define FLU_VA_DRIVERS_DEFAULT_SURFACE_WIDTH_ALIGNMENT 64
+#define FLU_VA_DRIVERS_DEFAULT_SURFACE_HEIGHT_ALIGNMENT 16
+
 static const uint8_t NALU_START_CODE[3] = { 0x00, 0x0, 0x01 };
 static const uint8_t NALU_START_CODE_4[4] = { 0x00, 0x00, 0x0, 0x01 };
 
