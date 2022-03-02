@@ -919,12 +919,6 @@ flu_va_drivers_vdpau_GetImage (VADriverContextP ctx, VASurfaceID surface,
 
   switch (image_obj->format_type) {
     case FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR:
-      // This call can only read the full surface
-      if (x != 0 || y != 0 || surface_obj->width != width ||
-          surface_obj->height != height) {
-        return VA_STATUS_ERROR_INVALID_PARAMETER;
-      }
-
       vdp_st = driver_data->vdp_impl.vdp_video_surface_get_bits_y_cb_cr (
           surface_obj->vdp_surface, image_obj->vdp_format, img_ptr.planes,
           img_ptr.pitches);
@@ -1186,29 +1180,32 @@ static VAStatus
 set_image_format (FluVaDriversVdpauImageObject *image_obj,
     const VAImageFormat *format, int width, int height)
 {
-  unsigned int half_width, half_height, quarter_size, size;
   VAImage *va_image = &image_obj->va_image;
-  int8_t component_order[4] = { 0 };
 
-  size = width * height;
-  half_width = (width + 1) / 2;
-  half_height = (height + 1) / 2;
-  quarter_size = half_width * half_height;
+  memset (va_image->component_order, 0, sizeof (va_image->component_order));
 
   switch (format->fourcc) {
-    case VA_FOURCC_NV12:
+    case VA_FOURCC_NV12: {
+      int padded_width = FLU_VA_DRIVERS_ALIGN (
+          width, FLU_VA_DRIVERS_DEFAULT_SURFACE_WIDTH_ALIGNMENT);
+      int padded_height = FLU_VA_DRIVERS_ALIGN (
+          height, FLU_VA_DRIVERS_DEFAULT_SURFACE_HEIGHT_ALIGNMENT);
+      int padded_size = padded_width * padded_height;
+      int padded_quarter_size = (padded_width / 2) * (padded_height / 2);
+
       image_obj->format_type = FLU_VA_DRIVERS_VDPAU_IMAGE_FORMAT_TYPE_YCBCR;
       image_obj->vdp_format = VDP_YCBCR_FORMAT_NV12;
 
       va_image->num_planes = 2;
-      va_image->pitches[0] = width;
+      va_image->pitches[0] = padded_width;
       va_image->offsets[0] = 0;
-      va_image->pitches[1] = width;
-      va_image->offsets[1] = size;
-      va_image->data_size = size + (2 * quarter_size);
+      va_image->pitches[1] = padded_width;
+      va_image->offsets[1] = padded_size;
+      va_image->data_size = padded_size + (2 * padded_quarter_size);
       va_image->num_palette_entries = 0;
       va_image->entry_bytes = 0;
       break;
+    }
     default:
       return VA_STATUS_ERROR_INVALID_IMAGE_FORMAT;
   }
@@ -1216,8 +1213,6 @@ set_image_format (FluVaDriversVdpauImageObject *image_obj,
   va_image->format = *format;
   va_image->width = width;
   va_image->height = height;
-  memcpy (
-      va_image->component_order, component_order, sizeof (component_order));
 
   return VA_STATUS_SUCCESS;
 }

@@ -203,11 +203,20 @@ flu_va_driver_vdpau_translate_ref_frame_h264 (VADriverContextP ctx,
 
   vdp_ref_frame->surface = surface_obj->vdp_surface;
   vdp_ref_frame->is_long_term =
-      va_ref_frame->flags & VA_PICTURE_H264_LONG_TERM_REFERENCE;
-  vdp_ref_frame->top_is_reference =
-      va_ref_frame->flags & VA_PICTURE_H264_TOP_FIELD;
-  vdp_ref_frame->bottom_is_reference =
-      va_ref_frame->flags & VA_PICTURE_H264_BOTTOM_FIELD;
+      (va_ref_frame->flags & VA_PICTURE_H264_LONG_TERM_REFERENCE) != 0;
+
+  if ((va_ref_frame->flags &
+          (VA_PICTURE_H264_TOP_FIELD | VA_PICTURE_H264_BOTTOM_FIELD)) == 0) {
+    vdp_ref_frame->top_is_reference = VDP_TRUE;
+    vdp_ref_frame->bottom_is_reference = VDP_TRUE;
+
+  } else {
+    vdp_ref_frame->top_is_reference =
+        (va_ref_frame->flags & VA_PICTURE_H264_TOP_FIELD) != 0;
+    vdp_ref_frame->bottom_is_reference =
+        (va_ref_frame->flags & VA_PICTURE_H264_BOTTOM_FIELD) != 0;
+  }
+
   vdp_ref_frame->field_order_cnt[0] = va_ref_frame->TopFieldOrderCnt;
   vdp_ref_frame->field_order_cnt[1] = va_ref_frame->BottomFieldOrderCnt;
   vdp_ref_frame->frame_idx = va_ref_frame->frame_idx;
@@ -242,6 +251,8 @@ flu_va_driver_vdpau_translate_buffer_h264 (VADriverContextP ctx,
         break;
       }
 
+      vdp_pic_info->field_order_cnt[0] = param->CurrPic.TopFieldOrderCnt;
+      vdp_pic_info->field_order_cnt[1] = param->CurrPic.TopFieldOrderCnt;
       // _MAP_BITS_FIELD (seq_fields, chroma_format_idc);
       // _MAP_BITS_FIELD (seq_fields, gaps_in_frame_num_value_allowed_flag);
       _MAP_BITS_FIELD (seq_fields, frame_mbs_only_flag);

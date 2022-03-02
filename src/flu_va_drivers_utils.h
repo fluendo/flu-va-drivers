@@ -4,6 +4,9 @@
 #include <va/va_backend.h>
 #include <stdio.h>
 
+#define FLU_VA_DRIVERS_ALIGN(n, alignment)                                    \
+  (((n) + ((alignment) -1)) & ~((alignment) -1))
+
 #define FLU_VA_DRIVERS_INVALID_ID -1
 typedef int FluVaDriversID;
 

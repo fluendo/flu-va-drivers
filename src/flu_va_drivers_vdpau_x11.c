@@ -354,7 +354,7 @@ flu_va_drivers_vdpau_render (VADriverContextP ctx,
   FluVaDriversVdpauVideoMixerObject *video_mixer_obj;
   VAStatus va_st;
   VdpStatus vdp_st;
-  VdpRect vdp_src_rect, vdp_dst_rect;
+  VdpRect vdp_dst_rect;
 
   va_st = flu_va_drivers_vdpau_wait_on_current_output_surface (
       ctx, context_obj, presentation_queue_map_entry->vdp_presentation_queue);
@@ -378,7 +378,7 @@ flu_va_drivers_vdpau_render (VADriverContextP ctx,
       /* current */
       surface_obj->vdp_surface,
       /* future */
-      0, NULL, &vdp_src_rect,
+      0, NULL, NULL,
       /* destination */
       vdp_output_surface, NULL, &vdp_dst_rect,
       /* layers */
