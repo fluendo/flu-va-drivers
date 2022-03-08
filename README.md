@@ -16,6 +16,26 @@ meson compile -C builddir
 # ninja -C builddir
 ```
 
+# How to install
+
+You can copy the generated *flu_va_drivers_vdpau_drv_video.so* file
+(in *builddir/src*) to your libva driver directory (given by
+`pkg-config --variable=driverdir libva`) or do the following:
+
+```sh
+ninja -C builddir install
+```
+
+If you have a distributed *.deb* file it will be as simple as (for example for
+the vdpau driver):
+```sh
+sudo apt install flu-va-drivers-vdpau_x.y.z.62155e4d-1_amd64.deb
+```
+
+Then ensure to set the environment variable `LIBVA_DRIVER_NAME=flu_va_drivers_vdpau`
+and `LIBVA_DRIVERS_PATH` to point to the path of where the
+*flu_va_drivers_vdpau_drv_video.so* file is located.
+
 # Testing
 
 ## VDPAU
