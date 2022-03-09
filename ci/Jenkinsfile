@@ -4,6 +4,14 @@ FLUSTER_REPO = 'git@github.com:fluendo/fluster.git'
 FLUSTER_RESULT_REPO = 'git@bitbucket.org:fluendo/fluster-results.git'
 DEFAULT_LIBVA_BRANCH = '2.10.0'
 
+IS_RELEASE = false
+RELEASE_TAG_PREFIX = 'FLU-VA-DRIVERS'
+RELEASE_VERSION_PATTERN = /\d+\.\d+\.\d+/
+RELEASE_TAG_PATTERN = /${RELEASE_TAG_PREFIX}-([A-Z]+)-(${RELEASE_VERSION_PATTERN})/
+RELEASE_TARGET_DISTROS = [
+    [distro: 'generic', extension: 'tar.bz2'],
+    [distro: 'debian', extension: 'deb'],
+]
 
 DRIVERS = [
   'vdpau',
@@ -17,6 +25,13 @@ FLUSTER_CONFIG = [
         tth: 2 * 60
     ],
 ]
+
+DEFAULT_CREDENTIALS = [[
+    $class: 'UsernamePasswordMultiBinding',
+    credentialsId: 'backoffice',
+    usernameVariable: 'USERNAME',
+    passwordVariable: 'PASSWORD'
+]]
 
 properties([
     parameters([
@@ -45,13 +60,31 @@ node(DEFAULT_NODE) {
     def cbc="flu-va-drivers-${env.BRANCH_NAME}.cbc"
 
     stage('Setup') {
+        IS_RELEASE = isRelease(env.TAG_NAME)
+        RELEASE_VERSION = '666.666.666'
+        DRIVERS = params.DRIVERS.split(',')
+        if (IS_RELEASE) {
+            def pattern = /${RELEASE_TAG_PREFIX}-([A-Z]+)-(${RELEASE_VERSION_PATTERN})/
+            def matcher = env.TAG_NAME =~ pattern
+
+            if (matcher.size() != 1 && matcher[0].size() != 3) {
+                error('Bad tag format')
+            }
+            def driver = matcher[0][1].toLowerCase()
+            if (!DRIVERS.contains(driver)) {
+                error("Driver '${driver}' is not supported")
+            }
+            DRIVERS = [driver]
+            RELEASE_VERSION = matcher[0][2]
+        }
+
         // checkout scm
         sh 'git clone git@bitbucket.org:fluendo/flu-va-drivers.git'
         checkoutCerbero()
 
         dir('fluendo-cerbero') {
             def _cbc = 'projects/flu-va-drivers/flu-va-drivers.cbc'
-            def recipes = params.DRIVERS.split(',').collect { "flu-va-drivers-${it}" }.join(' ')
+            def recipes = DRIVERS.collect { "flu-va-drivers-${it}" }.join(' ')
             sh (script: "./cerbero-uninstalled -t -c ${_cbc} gen-manifest-cbc ${recipes} ${env.BRANCH_NAME} ${_cbc} ${cbc}",
                 label: 'cerbero gen-manifest-cbc')
             sh (script: "./cerbero-uninstalled -t -c ${cbc} bootstrap --fridge -y",
@@ -59,13 +92,14 @@ node(DEFAULT_NODE) {
         }
     }
 
-    for (driver in params.DRIVERS.split(',')) {
+    for (driver in DRIVERS) {
         stage(driver) {
             // Empty: Just to draw a beatiful node in BlueOcean.
         }
 
         def outputDirInWS = "packages/${driver}"
         def outputDir = "${env.WORKSPACE}/${outputDirInWS}"
+
         dir('fluendo-cerbero') {
             def recipe = "flu-va-drivers-${driver}"
             stage('Build') {
@@ -76,16 +110,28 @@ node(DEFAULT_NODE) {
             stage('Package') {
                 def pkg = "flu-va-drivers-${driver}"
 
-                sh "mkdir -p ${outputDir}"
-                sh (script: "./cerbero-uninstalled -t -c ${cbc} package --fridge ${recipe} -o ${outputDir}",
-                    label: 'cerbero package')
+
+                for (targetDistro in RELEASE_TARGET_DISTROS) {
+                    def args = [
+                        recipe,
+                        '-o', "${outputDir}/${targetDistro.distro}",
+                    ]
+                    if (targetDistro.distro == 'generic') {
+                        args += ['--tarball']
+                    }
+                    args = args.join(' ')
+
+                    sh "mkdir -p ${outputDir}/${targetDistro.distro}"
+                    sh (script: "./cerbero-uninstalled -t -c ${cbc} package ${args}",
+                        label: "Package for '${targetDistro.distro}'.")
+                }
             }
         }
 
         stage('Upload packages') {
-            stash(name: driver, includes: "${outputDirInWS}/*.deb")
-            archiveArtifacts(artifacts: "${outputDirInWS}/*.deb", allowEmptyArchive: true, fingerprint: true)
-            sh(label: 'Remove packages', script: 'rm -rf *.deb')
+            def globPattern = "${outputDirInWS}/**"
+            stash(name: driver, includes: globPattern)
+            archiveArtifacts(artifacts: globPattern, allowEmptyArchive: true, fingerprint: true)
         }
 
         node(DEFAULT_TEST_NODE) {
@@ -114,17 +160,15 @@ node(DEFAULT_NODE) {
                 flusterDownloadTS(fluster)
 
                 unstash(driver)
-                sh (script: "sudo apt install --reinstall -y ${env.WORKSPACE}/${outputDirInWS}/*.deb", label:"Install ${}")
+                sh(script: "sudo apt install --reinstall -y ${env.WORKSPACE}/${outputDirInWS}/debian/*.deb",
+                   label:"Install ${}")
 
                 def gstPluginPath = "${env.WORKSPACE}/plugins"
                 sh(script: "mkdir -p ${gstPluginPath}", label: 'Setup Fluster: Create GST_PLUGIN_PATH for Fluster')
 
                 checkoutCerbero()
                 dir('fluendo-cerbero') {
-                    withCredentials([[$class: 'UsernamePasswordMultiBinding',
-                                      credentialsId: 'backoffice',
-                                      usernameVariable: 'USERNAME',
-                                      passwordVariable: 'PASSWORD']]) {
+                    withCredentials(DEFAULT_CREDENTIALS) {
                         sh(script: (
                             './cerbero-uninstalled -c projects/codecs/1.0/native.cbc fetch-codecs ' +
                             '-t custom -s linux -g 1.0 -a x86_64 flu-plugins-gst-fluendo-vadec-h264-1.0 ' +
@@ -199,6 +243,75 @@ node(DEFAULT_NODE) {
     }
 }
 
+node(DEFAULT_NODE) {
+    checkoutCerbero()
+
+    stage('Publish') {
+        withCredentials(DEFAULT_CREDENTIALS) {
+            def args = [
+                RELEASE_VERSION,
+                '--user', "$USERNAME",
+                '--password', "$PASSWORD",
+                '--no-prompt'
+            ]
+            if (!IS_RELEASE) {
+                args += ['--dry-run']
+            }
+            args = args.join(' ')
+
+            for (driver in DRIVERS) {
+                def cmd = "publish-flu-va-drivers-${driver}"
+
+                dir('fluendo-cerbero') {
+                    sh (script: "./cerbero-uninstalled -t ${cmd} ${args}",
+                        label: 'Publish')
+                }
+            }
+        }
+    }
+
+    stage('Release') {
+        withCredentials(DEFAULT_CREDENTIALS) {
+            def cbc = 'projects/flu-va-drivers/flu-va-drivers.cbc'
+
+            for (driver in DRIVERS) {
+                unstash(driver)
+
+                for (targetDistro in RELEASE_TARGET_DISTROS) {
+                    def packagesDir = "${env.WORKSPACE}/packages/${driver}/${targetDistro.distro}"
+                    def packageFiles
+                    dir(packagesDir) {
+                        def globPattern = "*.${targetDistro.extension}"
+                        packageFiles = findFiles(glob: globPattern)
+                    }
+
+                    for (packageFile in packageFiles) {
+                        def cmd = "upload-flu-va-drivers-${driver}"
+                        def args = [
+                            '--user', "$USERNAME",
+                            '--password', "$PASSWORD",
+                            '--version', RELEASE_VERSION,
+                            '--target-platform', 'linux',
+                            '--target-distro', targetDistro.distro,
+                            '--target-arch', 'x86_64',
+                            '--release_file', "${packagesDir}/${packageFile}",
+                        ]
+                        if (!IS_RELEASE) {
+                            args += ['--dry-run']
+                        }
+                        args = args.join(' ')
+
+                        dir('fluendo-cerbero') {
+                            sh (script: "./cerbero-uninstalled -t ${cmd} ${args}",
+                                label: 'Release')
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 def checkoutCerbero() {
     def cerberoRepo = 'git@github.com:fluendo/fluendo-cerbero.git'
     def branchOrTag = getRepoBranch(cerberoRepo, env.BRANCH_NAME ?: '1.0', '1.0')
@@ -239,4 +352,6 @@ def flusterDownloadTS(fluster) {
     sh "test -d ${fluster.resourcesDir}/${fluster.ts} || (cd ${fluster.repoDir} && ./fluster.py ${fluster.mainArgs} download ${fluster.ts})"
 }
 
-
+def isRelease(tagName) {
+    return tagName && tagName != 'master' && tagName =~ RELEASE_TAG_PATTERN
+}
