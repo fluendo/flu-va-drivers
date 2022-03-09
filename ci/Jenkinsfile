@@ -144,8 +144,7 @@ node(DEFAULT_NODE) {
                         'DISPLAY=:0',
                         "LD_LIBRARY_PATH=${libvaPrefix}/lib/x86_64-linux-gnu",
                         "LIBVA_TRACE=${vaapiLogDir}/vaapi_log",
-                        // FIXME: fluendo-cerbero's flu-va-driver package should install into proper drivers path.
-                        'LIBVA_DRIVERS_PATH=/usr/lib/dri/',
+                        'LIBVA_DRIVERS_PATH=/usr/lib/x86_64-linux-gnu/dri/',
                         "LIBVA_DRIVER_NAME=${driverName}",
                         'FLUVADEC_HW_BACKEND=vaapi',
                         "GST_PLUGIN_PATH=${gstPluginPath}",
