@@ -7,7 +7,6 @@
 void
 flu_va_drivers_get_vendor (char *str_vendor)
 {
-  sprintf (str_vendor, "%s (%s) - %d.%d.%d", FLU_VA_DRIVERS_COMMERCIAL_NAME,
-      FLU_VA_DRIVERS_VENDOR, FLU_VA_DRIVERS_MAJOR_VERSION,
-      FLU_VA_DRIVERS_MINOR_VERSION, FLU_VA_DRIVERS_MICRO_VERSION);
+  sprintf (str_vendor, "%s (%s) - %s", FLU_VA_DRIVERS_COMMERCIAL_NAME,
+      FLU_VA_DRIVERS_VENDOR, FLU_VA_DRIVERS_PROJECT_VERSION);
 }

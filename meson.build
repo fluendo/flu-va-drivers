@@ -15,14 +15,6 @@ if not fs.is_file('common/.git')
   error('The submodule "common" is missing. Try "git submodule update --init"')
 endif
 
-version_arr = meson.project_version().split('.')
-flu_va_drivers_major_version = version_arr[0]
-flu_va_drivers_minor_version = version_arr[1]
-flu_va_drivers_micro_version = version_arr[2]
-flu_va_drivers_version = '@0@.@1@.@2@'.format(flu_va_drivers_major_version,
-                                              flu_va_drivers_minor_version,
-                                              flu_va_drivers_micro_version)
-
 libva_version = '>= 1.10.0'
 libva_dep = dependency('libva', version : libva_version)
 
