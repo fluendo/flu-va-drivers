@@ -17,9 +17,9 @@ The following dependencies are needed:
 
 ```sh
 mkdir builddir
-meson compile -C builddir
-# or
-# ninja -C builddir
+meson builddir
+ninja -C builddir
+# or: meson compile -C builddir
 ```
 
 # How to install
