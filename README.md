@@ -7,6 +7,12 @@ Drivers for _libva_ that act as a translation layer to VAAPI from:
 
 In a future more drivers could be added.
 
+# Requirements
+
+The following dependencies are needed:
+
+  - libva >= 2.10.0 (VA-API >= 1.10)
+
 # How to compile
 
 ```sh
