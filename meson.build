@@ -15,7 +15,7 @@ if not fs.is_file('common/.git')
   error('The submodule "common" is missing. Try "git submodule update --init"')
 endif
 
-libva_version = '>= 1.10.0'
+libva_version = '>= 2.10.0'
 libva_dep = dependency('libva', version : libva_version)
 
 libva_driver_dir = get_option('driverdir')
