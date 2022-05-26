@@ -353,5 +353,5 @@ def flusterDownloadTS(fluster) {
 }
 
 def isRelease(tagName) {
-    return tagName && tagName != 'master' && tagName =~ RELEASE_TAG_PATTERN
+    return tagName && tagName != 'master' && tagName ==~ RELEASE_TAG_PATTERN
 }
