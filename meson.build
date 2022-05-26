@@ -27,4 +27,7 @@ libva_version_array = libva_dep.version().split('.')
 libva_major_version = libva_version_array[0]
 libva_minor_version = libva_version_array[1]
 
+datadir = get_option('datadir')
+
 subdir('src')
+subdir('data')
