@@ -1,7 +1,7 @@
 project(
   'flu-va-drivers',
   'c',
-  version : '0.0.2',
+  version : '0.0.3-dev',
   meson_version : '>= 0.46.0'
 )
 
