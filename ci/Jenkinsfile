@@ -160,7 +160,7 @@ node(DEFAULT_NODE) {
                 flusterDownloadTS(fluster)
 
                 unstash(driver)
-                sh(script: "sudo apt install --reinstall -y ${env.WORKSPACE}/${outputDirInWS}/debian/*.deb",
+                sh(script: "sudo apt install --reinstall --allow-downgrades -y ${env.WORKSPACE}/${outputDirInWS}/debian/*.deb",
                    label:"Install ${}")
 
                 def gstPluginPath = "${env.WORKSPACE}/plugins"
