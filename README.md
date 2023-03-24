@@ -1,6 +1,6 @@
 # flu-va-drivers
 
-Drivers for _libva_ that act as a translation layer to VAAPI from:
+Drivers for _libva_ that act as a translation layer to VA-API from:
 
  - VDPAU (default)
  - ...
@@ -28,12 +28,25 @@ Refer to [data/doc/flu-va-drivers/README.md](data/doc/flu-va-drivers/README.md).
 
 Refer to [data/doc/flu-va-drivers/README.md](data/doc/flu-va-drivers/README.md).
 
+# Supported formats
+
+The following decoders are supported:
+- H264
+
+The following profiles are supported:
+- VAProfileH264ConstrainedBaseline
+- VAProfileH264Main
+- VAProfileH264High
+
+The following chroma subsamplings are supported:
+- VA_RT_FORMAT_YUV420
+
 # Testing
 
 ## VDPAU
 
-The project is on develop and there is no way to do a full decoding test. So by
-now the way we're testing consist on try to decode using `ffmpeg` with this
+### FFMPEG
+The way we're testing consist on try to decode using `ffmpeg` with this
 driver and checking the libva trace and/or debugging it with `gdb`. Here is an
 example script to do it:
 
@@ -59,3 +72,36 @@ $gdb ffmpeg \
 	-f rawvideo \
 	./deleteme.out
 ```
+
+### Chrome
+Supported Google Chrome version is 97.0.4692.99. To fetch this version you can
+use the following [link](https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_97.0.4692.99-1_amd64.deb).
+
+The steps to test Google Chrome with flu-va-drivers are the following:
+
+First, generate a test video file encoded as H.264:
+```
+ffmpeg -f lavfi -i testsrc=duration=10:size=1280x720:rate=30 -pix_fmt yuv420p /tmp/test420.mp4
+```
+
+Run Google Chrome with the following environment variables and options:
+```
+LIBVA_DRIVER_NAME=flu_va_drivers_vdpau \
+LIBVA_DRIVERS_PATH=$PWD/builddir/src/ \
+google-chrome-stable --use-gl=desktop --enable-features=VaapiVideoDecoder \
+    --disable-features=UserChromeOSDirectVideoEncoder /tmp/test420.mp4 \
+    --auto-open-devtools-for-tabs
+```
+
+To check that Google Chrome is using VA-API, do the following:
+1. Input the following keys combination: <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd>
+2. In the right panel, go to three dots menu button and navigate to "More Tools > Media".
+3. In the right panel (with the "FrameTitle test420.mp4" item selected under
+"Players" section), in the "Video Decoder" section, the "Decoder name" field
+should be set "VDAVideoDecoder". If it is set to FFmpegVideoDecoder or something else,
+then Google Chrome is not using VA-API.
+
+### Other similar projects
+
+- https://github.com/freedesktop/vdpau-driver
+- https://github.com/elFarto/nvidia-vaapi-driver
