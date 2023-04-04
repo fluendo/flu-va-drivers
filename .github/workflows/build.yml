@@ -1,0 +1,45 @@
+name: "Build and test the driver, and release a version if necessary."
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install deps
+        run: |
+          sudo python3 -m pip install meson ninja --upgrade
+          sudo apt install -y libva-dev libvdpau-dev vainfo
+      - name: Build
+        run: |
+          meson setup builddir -Dbuildtype=release -Dstrip=true
+          sudo ninja -C builddir install
+        shell: bash
+      - name: Create release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            /usr/lib/x86_64-linux-gnu/dri/flu_va_drivers_vdpau_drv_video.so
