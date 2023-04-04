@@ -2,7 +2,7 @@ project(
   'flu-va-drivers',
   'c',
   version : '0.0.3-dev',
-  meson_version : '>= 0.46.0'
+  meson_version : '>= 0.56.0'
 )
 
 python = import('python').find_installation()
@@ -20,7 +20,7 @@ libva_dep = dependency('libva', version : libva_version)
 
 libva_driver_dir = get_option('driverdir')
 if libva_driver_dir == ''
-  libva_driver_dir = libva_dep.get_pkgconfig_variable('driverdir')
+  libva_driver_dir = libva_dep.get_variable(pkgconfig : 'driverdir')
 endif
 
 libva_version_array = libva_dep.version().split('.')
