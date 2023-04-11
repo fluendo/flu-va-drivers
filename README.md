@@ -41,6 +41,14 @@ The following profiles are supported:
 The following chroma subsamplings are supported:
 - VA_RT_FORMAT_YUV420
 
+# Release process
+
+1. First, ensure that Github Actions build workflow on last commit is on green status.
+2. Submit a PR with following changes: change version in meson.build to the desired one, e.g. 0.0.1
+3. Wait for that PR to be merged.
+4. Tag the resulting commit as the desired release version, e.g. 0.0.1
+5. Submit a PR with the following changes: change version in meson.build to the next desired version, suffixed by `-dev`, e.g. 0.0.2-dev.
+
 # Testing
 
 ## VDPAU
